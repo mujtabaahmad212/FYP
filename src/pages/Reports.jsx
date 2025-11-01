@@ -1,316 +1,254 @@
-import React, { useState } from 'react';
-import { Download, Calendar, FileText, TrendingUp, Filter, BarChart3, AlertCircle } from 'lucide-react';
-import { LocationBarChart, TrendChart } from '../components/Chart';
-
-const chartData = [
-  { month: 'May', incidents: 12 },
-  { month: 'Jun', incidents: 19 },
-  { month: 'Jul', incidents: 15 },
-  { month: 'Aug', incidents: 22 },
-  { month: 'Sep', incidents: 18 },
-  { month: 'Oct', incidents: 25 },
-];
-
-const locationData = [
-  { location: 'Cafeteria', count: 12 },
-  { location: 'Parking Lot', count: 8 },
-  { location: 'Main Gate', count: 6 },
-  { location: 'Library', count: 5 },
-  { location: 'Building A', count: 4 },
-];
+import React, { useState, useEffect } from 'react';
+import { Download, Calendar, FileText, TrendingUp } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { useIncidents } from '../context/IncidentsContext';
+import { analyticsAPI } from '../utils/api';
 
 const Reports = () => {
-  const [dateRange, setDateRange] = useState('month');
-  const [reportType, setReportType] = useState('all');
-  const [isGenerating, setIsGenerating] = useState(false);
+  const { incidents, fetchIncidents } = useIncidents();
+  const [analyticsData, setAnalyticsData] = useState({
+    bySeverity: [],
+    byType: [],
+    byLocation: []
+  });
+  const [loading, setLoading] = useState(false);
 
-  // Calculate summary statistics
-  const totalIncidents = chartData.reduce((sum, item) => sum + item.incidents, 0);
-  const avgIncidents = Math.round(totalIncidents / chartData.length);
-  const highestMonth = chartData.reduce((max, item) => 
-    item.incidents > max.incidents ? item : max, chartData[0]
-  );
-  const trend = ((chartData[chartData.length - 1].incidents - chartData[0].incidents) / chartData[0].incidents * 100).toFixed(1);
+  useEffect(() => {
+    fetchIncidents();
+    loadAnalytics();
+  }, [fetchIncidents]);
 
-  const handleGenerateReport = () => {
-    setIsGenerating(true);
-    setTimeout(() => {
-      setIsGenerating(false);
-      alert('Report generated successfully! Download will start shortly.');
-    }, 1500);
+  const loadAnalytics = async () => {
+    setLoading(true);
+    try {
+      const dashboardData = await analyticsAPI.getDashboardStats();
+      
+      // Set analytics from backend or calculate from incidents
+      if (dashboardData.bySeverity && dashboardData.bySeverity.length > 0) {
+        setAnalyticsData(prev => ({ ...prev, bySeverity: dashboardData.bySeverity }));
+      } else {
+        const bySeverity = calculateBySeverity(incidents);
+        setAnalyticsData(prev => ({ ...prev, bySeverity }));
+      }
+
+      if (dashboardData.byType && dashboardData.byType.length > 0) {
+        setAnalyticsData(prev => ({ ...prev, byType: dashboardData.byType }));
+      } else {
+        const byType = calculateByType(incidents);
+        setAnalyticsData(prev => ({ ...prev, byType }));
+      }
+
+      const hotspots = await analyticsAPI.getHotspots().catch(() => []);
+      if (hotspots && hotspots.length > 0) {
+        setAnalyticsData(prev => ({ ...prev, byLocation: hotspots }));
+      } else {
+        const byLocation = calculateHotspots(incidents);
+        setAnalyticsData(prev => ({ ...prev, byLocation }));
+      }
+    } catch (error) {
+      console.error('Error loading analytics:', error);
+      // Calculate from incidents
+      setAnalyticsData({
+        bySeverity: calculateBySeverity(incidents),
+        byType: calculateByType(incidents),
+        byLocation: calculateHotspots(incidents)
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleExportPDF = () => {
-    alert('Exporting report as PDF...');
+  const calculateBySeverity = (incidents) => {
+    const severityCount = { low: 0, medium: 0, high: 0, critical: 0 };
+    incidents.forEach(inc => {
+      const severity = inc.severity || 'medium';
+      if (severityCount.hasOwnProperty(severity)) {
+        severityCount[severity]++;
+      }
+    });
+    return [
+      { name: 'Low', value: severityCount.low },
+      { name: 'Medium', value: severityCount.medium },
+      { name: 'High', value: severityCount.high },
+      { name: 'Critical', value: severityCount.critical }
+    ];
   };
 
-  const handleExportCSV = () => {
-    // Generate CSV content
-    const csvHeader = 'Month,Incidents\n';
-    const csvData = chartData.map(row => `${row.month},${row.incidents}`).join('\n');
-    const csv = csvHeader + csvData;
-
-    // Create download link
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `incident-report-${Date.now()}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+  const calculateByType = (incidents) => {
+    const typeCount = {};
+    incidents.forEach(inc => {
+      const type = inc.type || 'Other';
+      typeCount[type] = (typeCount[type] || 0) + 1;
+    });
+    return Object.entries(typeCount).map(([name, value]) => ({ name, value }));
   };
+
+  const calculateHotspots = (incidents) => {
+    const locationCount = {};
+    incidents.forEach(inc => {
+      if (inc.location) {
+        locationCount[inc.location] = (locationCount[inc.location] || 0) + 1;
+      }
+    });
+    
+    return Object.entries(locationCount)
+      .map(([location, count]) => ({
+        location,
+        count,
+        severity: incidents.find(i => i.location === location)?.severity || 'medium'
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+  };
+
+  useEffect(() => {
+    if (incidents.length > 0) {
+      loadAnalytics();
+    }
+  }, [incidents.length]);
+
+  const severityColors = {
+    low: '#10b981',
+    medium: '#f59e0b',
+    high: '#ef4444',
+    critical: '#dc2626'
+  };
+
+  const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+
+  if (loading) {
+    return (
+      <div className="space-y-6 animate-fadeIn">
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <div className="spinner w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4 animate-spin"></div>
+            <p className="text-slate-600">Loading reports...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
+    <div className="space-y-6 animate-fadeIn">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Reports & Analytics</h1>
-          <p className="text-gray-600 mt-1">Generate comprehensive security reports and insights</p>
+          <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 gradient-text">Analytics & Reports</h2>
+          <p className="text-slate-600 mt-1">Comprehensive incident analytics and insights ({incidents.length} total incidents)</p>
         </div>
-        <button
-          onClick={handleGenerateReport}
-          disabled={isGenerating}
-          className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-        >
-          <FileText className="w-5 h-5" />
-          {isGenerating ? 'Generating...' : 'Generate Report'}
+        <button className="btn-primary flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl hover:from-blue-700 hover:to-blue-600 font-semibold shadow-lg hover:shadow-xl transition-all duration-200 hover-lift">
+          <Download className="w-5 h-5" />
+          <span className="hidden sm:inline">Export PDF</span>
+          <span className="sm:hidden">Export</span>
         </button>
       </div>
-
-      {/* Filters Section */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Filter className="w-5 h-5 text-gray-600" />
-          <h2 className="text-xl font-semibold text-gray-900">Report Filters</h2>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Date Range */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Date Range
-            </label>
-            <select
-              value={dateRange}
-              onChange={(e) => setDateRange(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="week">Last Week</option>
-              <option value="month">Last Month</option>
-              <option value="quarter">Last Quarter</option>
-              <option value="year">Last Year</option>
-              <option value="custom">Custom Range</option>
-            </select>
-          </div>
-
-          {/* Report Type */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Report Type
-            </label>
-            <select
-              value={reportType}
-              onChange={(e) => setReportType(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="all">All Incidents</option>
-              <option value="high">High Severity Only</option>
-              <option value="medium">Medium Severity Only</option>
-              <option value="low">Low Severity Only</option>
-              <option value="location">By Location</option>
-              <option value="trend">Trend Analysis</option>
-            </select>
-          </div>
-
-          {/* Export Format */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Export Format
-            </label>
-            <div className="flex gap-2">
-              <button
-                onClick={handleExportPDF}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <Download className="w-4 h-4" />
-                PDF
-              </button>
-              <button
-                onClick={handleExportCSV}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <Download className="w-4 h-4" />
-                CSV
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Summary Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-md p-6 text-white">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium opacity-90">Total Incidents</h3>
-            <BarChart3 className="w-5 h-5 opacity-80" />
-          </div>
-          <p className="text-3xl font-bold">{totalIncidents}</p>
-          <p className="text-sm opacity-80 mt-1">Last 6 months</p>
-        </div>
-
-        <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow-md p-6 text-white">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium opacity-90">Avg per Month</h3>
-            <TrendingUp className="w-5 h-5 opacity-80" />
-          </div>
-          <p className="text-3xl font-bold">{avgIncidents}</p>
-          <p className="text-sm opacity-80 mt-1">incidents/month</p>
-        </div>
-
-        <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg shadow-md p-6 text-white">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium opacity-90">Peak Month</h3>
-            <Calendar className="w-5 h-5 opacity-80" />
-          </div>
-          <p className="text-3xl font-bold">{highestMonth.incidents}</p>
-          <p className="text-sm opacity-80 mt-1">{highestMonth.month}</p>
-        </div>
-
-        <div className={`bg-gradient-to-br ${parseFloat(trend) > 0 ? 'from-red-500 to-red-600' : 'from-green-500 to-green-600'} rounded-lg shadow-md p-6 text-white`}>
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium opacity-90">Trend</h3>
-            <AlertCircle className="w-5 h-5 opacity-80" />
-          </div>
-          <p className="text-3xl font-bold">{trend > 0 ? '+' : ''}{trend}%</p>
-          <p className="text-sm opacity-80 mt-1">vs first month</p>
-        </div>
-      </div>
-
-      {/* Charts Section */}
+      
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Trend Chart */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-gray-900">Incident Trends</h2>
-            <TrendingUp className="w-5 h-5 text-gray-600" />
+        <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-200 card-hover">
+          <div className="flex items-center gap-2 mb-6">
+            <TrendingUp className="w-5 h-5 text-blue-600" />
+            <h3 className="text-lg font-semibold text-slate-900">Incidents by Severity</h3>
           </div>
-          <TrendChart data={chartData} />
-          <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-            <p className="text-sm text-blue-800">
-              <strong>Insight:</strong> October shows the highest incident count with 25 incidents. 
-              Consider increasing security presence during this period.
-            </p>
-          </div>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={analyticsData.bySeverity.length > 0 ? analyticsData.bySeverity : [
+              { name: 'Low', value: 0 },
+              { name: 'Medium', value: 0 },
+              { name: 'High', value: 0 },
+              { name: 'Critical', value: 0 }
+            ]}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis dataKey="name" stroke="#64748b" />
+              <YAxis stroke="#64748b" />
+              <Tooltip 
+                contentStyle={{ 
+                  backgroundColor: 'rgba(255, 255, 255, 0.95)', 
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '8px'
+                }} 
+              />
+              <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+                {(analyticsData.bySeverity.length > 0 ? analyticsData.bySeverity : []).map((entry, index) => (
+                  <Bar key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
         </div>
 
-        {/* Location Chart */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-gray-900">Hotspot Locations</h2>
-            <BarChart3 className="w-5 h-5 text-gray-600" />
+        <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-200 card-hover">
+          <div className="flex items-center gap-2 mb-6">
+            <FileText className="w-5 h-5 text-blue-600" />
+            <h3 className="text-lg font-semibold text-slate-900">Hotspot Locations</h3>
           </div>
-          <LocationBarChart data={locationData} />
-          <div className="mt-4 p-3 bg-orange-50 rounded-lg">
-            <p className="text-sm text-orange-800">
-              <strong>Hotspot Alert:</strong> Cafeteria has 12 incidents this month, marking it as 
-              a high-risk area requiring additional monitoring.
-            </p>
+          <div className="space-y-3">
+            {analyticsData.byLocation.length > 0 ? (
+              analyticsData.byLocation.map((spot, i) => (
+                <div 
+                  key={i} 
+                  className="flex items-center justify-between p-4 bg-gradient-to-r from-slate-50 to-blue-50/30 rounded-xl border border-slate-200 hover:shadow-md transition-all duration-200"
+                >
+                  <div className="flex-1">
+                    <p className="font-semibold text-slate-900">{spot.location}</p>
+                    <p className="text-sm text-slate-600">{spot.count} incidents reported</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div 
+                      className="w-4 h-4 rounded-full shadow-sm" 
+                      style={{backgroundColor: severityColors[spot.severity] || severityColors.medium}}
+                    ></div>
+                    <span className="text-lg font-bold text-slate-700">{spot.count}</span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-slate-500">
+                <p>No location data available</p>
+              </div>
+            )}
           </div>
-        </div>
-      </div>
-
-      {/* Detailed Report Table */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">Incident Breakdown by Type</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b-2 border-gray-200">
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">Incident Type</th>
-                <th className="text-center py-3 px-4 font-semibold text-gray-700">Count</th>
-                <th className="text-center py-3 px-4 font-semibold text-gray-700">Percentage</th>
-                <th className="text-center py-3 px-4 font-semibold text-gray-700">Avg Response Time</th>
-                <th className="text-center py-3 px-4 font-semibold text-gray-700">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="border-b border-gray-100 hover:bg-gray-50">
-                <td className="py-3 px-4">Theft</td>
-                <td className="text-center py-3 px-4">28</td>
-                <td className="text-center py-3 px-4">25.5%</td>
-                <td className="text-center py-3 px-4">12 min</td>
-                <td className="text-center py-3 px-4">
-                  <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm">Improving</span>
-                </td>
-              </tr>
-              <tr className="border-b border-gray-100 hover:bg-gray-50">
-                <td className="py-3 px-4">Fight/Altercation</td>
-                <td className="text-center py-3 px-4">22</td>
-                <td className="text-center py-3 px-4">20.0%</td>
-                <td className="text-center py-3 px-4">8 min</td>
-                <td className="text-center py-3 px-4">
-                  <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">Good</span>
-                </td>
-              </tr>
-              <tr className="border-b border-gray-100 hover:bg-gray-50">
-                <td className="py-3 px-4">Unauthorized Access</td>
-                <td className="text-center py-3 px-4">19</td>
-                <td className="text-center py-3 px-4">17.3%</td>
-                <td className="text-center py-3 px-4">15 min</td>
-                <td className="text-center py-3 px-4">
-                  <span className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm">Needs Attention</span>
-                </td>
-              </tr>
-              <tr className="border-b border-gray-100 hover:bg-gray-50">
-                <td className="py-3 px-4">Vandalism</td>
-                <td className="text-center py-3 px-4">18</td>
-                <td className="text-center py-3 px-4">16.4%</td>
-                <td className="text-center py-3 px-4">20 min</td>
-                <td className="text-center py-3 px-4">
-                  <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm">Improving</span>
-                </td>
-              </tr>
-              <tr className="border-b border-gray-100 hover:bg-gray-50">
-                <td className="py-3 px-4">Suspicious Activity</td>
-                <td className="text-center py-3 px-4">15</td>
-                <td className="text-center py-3 px-4">13.6%</td>
-                <td className="text-center py-3 px-4">10 min</td>
-                <td className="text-center py-3 px-4">
-                  <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">Good</span>
-                </td>
-              </tr>
-              <tr className="border-b border-gray-100 hover:bg-gray-50">
-                <td className="py-3 px-4">Other</td>
-                <td className="text-center py-3 px-4">8</td>
-                <td className="text-center py-3 px-4">7.3%</td>
-                <td className="text-center py-3 px-4">18 min</td>
-                <td className="text-center py-3 px-4">
-                  <span className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm">Normal</span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
         </div>
       </div>
 
-      {/* Recommendations Section */}
-      <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg shadow-md p-6 border border-purple-100">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <AlertCircle className="w-5 h-5 text-purple-600" />
-          AI-Powered Recommendations
-        </h2>
-        <div className="space-y-3">
-          <div className="flex items-start gap-3">
-            <div className="w-2 h-2 bg-purple-600 rounded-full mt-2"></div>
-            <p className="text-gray-700">Increase patrol frequency in the Cafeteria during lunch hours (12-2 PM) to address the high incident rate.</p>
+      <div className="bg-gradient-to-br from-white to-blue-50/30 rounded-2xl shadow-lg p-6 border border-slate-200 card-hover">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+          <div>
+            <h3 className="text-lg font-semibold text-slate-900">Generate Custom Report</h3>
+            <p className="text-sm text-slate-600 mt-1">Filter and export incident data</p>
           </div>
-          <div className="flex items-start gap-3">
-            <div className="w-2 h-2 bg-purple-600 rounded-full mt-2"></div>
-            <p className="text-gray-700">Install additional CCTV cameras in Parking Lot to improve surveillance coverage.</p>
+          <button className="btn-primary px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl hover:from-blue-700 hover:to-blue-600 font-semibold shadow-lg hover:shadow-xl transition-all duration-200 hover-lift">
+            <Download className="w-5 h-5 inline mr-2" />
+            Export PDF
+          </button>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Time Period</label>
+            <select className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white">
+              <option>Last 7 Days</option>
+              <option>Last 30 Days</option>
+              <option>Last 3 Months</option>
+              <option>Last Year</option>
+            </select>
           </div>
-          <div className="flex items-start gap-3">
-            <div className="w-2 h-2 bg-purple-600 rounded-full mt-2"></div>
-            <p className="text-gray-700">Response time for Unauthorized Access incidents is above average. Consider dedicated response team training.</p>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Incident Type</label>
+            <select className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white">
+              <option>All Types</option>
+              <option>Theft</option>
+              <option>Violence</option>
+              <option>Intrusion</option>
+              <option>Fire</option>
+              <option>Medical</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Location</label>
+            <select className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white">
+              <option>All Locations</option>
+              {analyticsData.byLocation.map((spot, i) => (
+                <option key={i} value={spot.location}>{spot.location}</option>
+              ))}
+            </select>
           </div>
         </div>
       </div>

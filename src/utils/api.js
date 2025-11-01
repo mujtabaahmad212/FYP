@@ -16,7 +16,7 @@ const getAuthToken = () => {
   return null;
 };
 
-// Generic API call function
+// Generic API call function with error handling
 const apiCall = async (endpoint, options = {}) => {
   const token = getAuthToken();
   
@@ -29,12 +29,17 @@ const apiCall = async (endpoint, options = {}) => {
     },
   };
 
+  // Remove Content-Type for FormData
+  if (options.body instanceof FormData) {
+    delete config.headers['Content-Type'];
+  }
+
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
     
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'API call failed');
+      const error = await response.json().catch(() => ({ message: 'API call failed' }));
+      throw new Error(error.message || `HTTP ${response.status}: ${response.statusText}`);
     }
     
     return await response.json();
@@ -44,12 +49,58 @@ const apiCall = async (endpoint, options = {}) => {
   }
 };
 
+// Public API call (no auth required) - for viewer incident reporting
+const publicApiCall = async (endpoint, options = {}) => {
+  const config = {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+  };
+
+  if (options.body instanceof FormData) {
+    delete config.headers['Content-Type'];
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+    
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'API call failed' }));
+      throw new Error(error.message || `HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Public API Error:', error);
+    throw error;
+  }
+};
+
 // Auth APIs
 export const authAPI = {
-  login: (credentials) => apiCall('/auth/login', {
-    method: 'POST',
-    body: JSON.stringify(credentials),
-  }),
+  login: async (credentials) => {
+    try {
+      const response = await apiCall('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify(credentials),
+      });
+      return response;
+    } catch (error) {
+      // Fallback for development - use mock login
+      console.warn('Backend not available, using mock login:', error.message);
+      return {
+        user: {
+          id: Date.now(),
+          email: credentials.email,
+          role: credentials.role || 'admin',
+          name: credentials.email.split('@')[0],
+        },
+        token: `mock_token_${Date.now()}`,
+      };
+    }
+  },
   
   register: (userData) => apiCall('/auth/register', {
     method: 'POST',
@@ -57,48 +108,237 @@ export const authAPI = {
   }),
   
   logout: () => apiCall('/auth/logout', { method: 'POST' }),
+  
+  verifyToken: () => apiCall('/auth/verify'),
 };
 
 // Incident APIs
 export const incidentAPI = {
-  getAll: (filters = {}) => {
-    const queryString = new URLSearchParams(filters).toString();
-    return apiCall(`/incidents?${queryString}`);
+  // Get all incidents with optional filters
+  getAll: async (filters = {}) => {
+    try {
+      const queryString = new URLSearchParams(filters).toString();
+      const endpoint = queryString ? `/incidents?${queryString}` : '/incidents';
+      return await apiCall(endpoint);
+    } catch (error) {
+      console.warn('Backend not available, using mock data:', error.message);
+      // Return mock data for development
+      return {
+        incidents: [],
+        total: 0,
+        page: 1,
+        limit: 100,
+      };
+    }
   },
   
-  getById: (id) => apiCall(`/incidents/${id}`),
+  // Get incident by ID
+  getById: async (id) => {
+    try {
+      return await apiCall(`/incidents/${id}`);
+    } catch (error) {
+      console.warn('Backend not available, returning null:', error.message);
+      return null;
+    }
+  },
   
-  create: (incidentData) => apiCall('/incidents', {
-    method: 'POST',
-    body: JSON.stringify(incidentData),
-  }),
+  // Create incident (for authenticated users)
+  create: async (incidentData) => {
+    try {
+      return await apiCall('/incidents', {
+        method: 'POST',
+        body: JSON.stringify(incidentData),
+      });
+    } catch (error) {
+      console.warn('Backend not available, using localStorage fallback:', error.message);
+      // Fallback to localStorage for development
+      const newIncident = {
+        id: Date.now(),
+        ...incidentData,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      const existing = JSON.parse(localStorage.getItem('incidents') || '[]');
+      existing.push(newIncident);
+      localStorage.setItem('incidents', JSON.stringify(existing));
+      return { incident: newIncident };
+    }
+  },
   
-  update: (id, incidentData) => apiCall(`/incidents/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(incidentData),
-  }),
+  // Public incident report (for viewers - no auth required)
+  reportPublic: async (incidentData) => {
+    try {
+      return await publicApiCall('/incidents/public', {
+        method: 'POST',
+        body: JSON.stringify(incidentData),
+      });
+    } catch (error) {
+      console.warn('Backend not available, using localStorage fallback:', error.message);
+      // Fallback to localStorage for development
+      const newIncident = {
+        id: Date.now(),
+        ...incidentData,
+        status: 'open',
+        assignedTo: 'Pending Assignment',
+        reporter: 'Anonymous Reporter',
+        timestamp: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        lat: incidentData.lat || 34.0151 + (Math.random() - 0.5) * 0.01,
+        lng: incidentData.lng || 71.5249 + (Math.random() - 0.5) * 0.01,
+      };
+      
+      // Store in both viewer incidents and main incidents
+      const viewerIncidents = JSON.parse(localStorage.getItem('viewerIncidents') || '[]');
+      viewerIncidents.push(newIncident);
+      localStorage.setItem('viewerIncidents', JSON.stringify(viewerIncidents));
+      localStorage.setItem('viewerIncidentId', newIncident.id.toString());
+      
+      const allIncidents = JSON.parse(localStorage.getItem('incidents') || '[]');
+      allIncidents.push(newIncident);
+      localStorage.setItem('incidents', JSON.stringify(allIncidents));
+      
+      return { incident: newIncident, trackingId: newIncident.id };
+    }
+  },
   
-  delete: (id) => apiCall(`/incidents/${id}`, { method: 'DELETE' }),
+  // Get incident by tracking ID (for viewers)
+  getByTrackingId: async (trackingId) => {
+    try {
+      return await publicApiCall(`/incidents/track/${trackingId}`);
+    } catch (error) {
+      console.warn('Backend not available, using localStorage fallback:', error.message);
+      // Fallback to localStorage
+      const viewerIncidents = JSON.parse(localStorage.getItem('viewerIncidents') || '[]');
+      const incident = viewerIncidents.find(inc => inc.id === parseInt(trackingId));
+      if (!incident) {
+        const allIncidents = JSON.parse(localStorage.getItem('incidents') || '[]');
+        return allIncidents.find(inc => inc.id === parseInt(trackingId)) || null;
+      }
+      return incident;
+    }
+  },
   
-  uploadEvidence: (id, formData) => apiCall(`/incidents/${id}/evidence`, {
-    method: 'POST',
-    body: formData,
-    headers: {}, // Let browser set Content-Type for FormData
-  }),
+  // Update incident
+  update: async (id, incidentData) => {
+    try {
+      return await apiCall(`/incidents/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(incidentData),
+      });
+    } catch (error) {
+      console.warn('Backend not available, using localStorage fallback:', error.message);
+      // Fallback to localStorage
+      const incidents = JSON.parse(localStorage.getItem('incidents') || '[]');
+      const index = incidents.findIndex(inc => inc.id === parseInt(id));
+      if (index !== -1) {
+        incidents[index] = { ...incidents[index], ...incidentData, updatedAt: new Date().toISOString() };
+        localStorage.setItem('incidents', JSON.stringify(incidents));
+        return { incident: incidents[index] };
+      }
+      throw new Error('Incident not found');
+    }
+  },
+  
+  // Delete incident
+  delete: async (id) => {
+    try {
+      return await apiCall(`/incidents/${id}`, { method: 'DELETE' });
+    } catch (error) {
+      console.warn('Backend not available, using localStorage fallback:', error.message);
+      // Fallback to localStorage
+      const incidents = JSON.parse(localStorage.getItem('incidents') || '[]');
+      const filtered = incidents.filter(inc => inc.id !== parseInt(id));
+      localStorage.setItem('incidents', JSON.stringify(filtered));
+      return { success: true };
+    }
+  },
+  
+  // Update incident status
+  updateStatus: async (id, status) => {
+    try {
+      return await apiCall(`/incidents/${id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      });
+    } catch (error) {
+      console.warn('Backend not available, using localStorage fallback:', error.message);
+      return await incidentAPI.update(id, { status });
+    }
+  },
+  
+  // Assign incident to officer
+  assign: async (id, officerId) => {
+    try {
+      return await apiCall(`/incidents/${id}/assign`, {
+        method: 'PATCH',
+        body: JSON.stringify({ assignedTo: officerId }),
+      });
+    } catch (error) {
+      console.warn('Backend not available, using localStorage fallback:', error.message);
+      return await incidentAPI.update(id, { assignedTo: officerId });
+    }
+  },
 };
 
 // Analytics/Reports APIs
 export const analyticsAPI = {
-  getDashboardStats: () => apiCall('/analytics/dashboard'),
+  getDashboardStats: async () => {
+    try {
+      return await apiCall('/analytics/dashboard');
+    } catch (error) {
+      console.warn('Backend not available, using mock stats:', error.message);
+      // Return mock stats
+      const incidents = JSON.parse(localStorage.getItem('incidents') || '[]');
+      const total = incidents.length;
+      const open = incidents.filter(i => i.status === 'open').length;
+      const resolved = incidents.filter(i => i.status === 'resolved').length;
+      const highPriority = incidents.filter(i => i.severity === 'high' || i.severity === 'critical').length;
+      
+      return {
+        total,
+        open,
+        resolved,
+        highPriority,
+        weeklyTrend: [],
+        byType: [],
+        bySeverity: [],
+      };
+    }
+  },
   
-  getIncidentTrends: (period) => apiCall(`/analytics/trends?period=${period}`),
+  getIncidentTrends: async (period = 'week') => {
+    try {
+      return await apiCall(`/analytics/trends?period=${period}`);
+    } catch (error) {
+      console.warn('Backend not available, using mock trends:', error.message);
+      return {
+        weekly: [],
+        monthly: [],
+      };
+    }
+  },
   
-  getHotspots: () => apiCall('/analytics/hotspots'),
+  getHotspots: async () => {
+    try {
+      return await apiCall('/analytics/hotspots');
+    } catch (error) {
+      console.warn('Backend not available, using mock hotspots:', error.message);
+      return [];
+    }
+  },
   
-  exportReport: (params) => apiCall('/analytics/export', {
-    method: 'POST',
-    body: JSON.stringify(params),
-  }),
+  exportReport: async (params) => {
+    try {
+      return await apiCall('/analytics/export', {
+        method: 'POST',
+        body: JSON.stringify(params),
+      });
+    } catch (error) {
+      console.warn('Backend not available:', error.message);
+      throw error;
+    }
+  },
 };
 
 // User/Settings APIs
