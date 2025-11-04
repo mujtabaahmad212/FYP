@@ -1,32 +1,27 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, Menu, LogOut, X, Shield, AlertTriangle, FileText, Settings, MapPin, TrendingUp, Plus, Eye, Users, ChevronDown } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom'; // Import Link and useLocation
+import { Bell, LogOut, Shield, AlertTriangle, FileText, Settings, MapPin, TrendingUp, ChevronDown } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
-const Navbar = ({ currentPage, setCurrentPage, userRole, isMobile }) => {
-  const { logout, user } = useAuth();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+const Navbar = () => {
+  const { logout, user, userRole } = useAuth(); // Get userRole from context
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
-  const menuRef = useRef(null);
-
-  const viewerIncidentId = localStorage.getItem('viewerIncidentId');
+  const location = useLocation(); // Get current page location
 
   // Navigation items based on role
   const getMenuItems = () => {
-    if (userRole !== 'viewer') {
+    if (userRole === 'admin' || userRole === 'officer') {
       return [
-        { id: 'dashboard', label: 'Dashboard', icon: TrendingUp },
-        { id: 'incidents', label: 'Incidents', icon: AlertTriangle },
-        { id: 'map', label: 'Live Map', icon: MapPin },
-        { id: 'reports', label: 'Reports', icon: FileText },
-        ...(userRole === 'admin' ? [{ id: 'settings', label: 'Settings', icon: Settings }] : [])
-      ];
-    } else {
-      return [
-        { id: 'report-incident', label: 'Report Incident', icon: Plus },
-        ...(viewerIncidentId ? [{ id: 'track-incident', label: 'Track My Report', icon: Eye }] : [])
+        { id: 'dashboard', label: 'Dashboard', icon: TrendingUp, path: '/dashboard' },
+        { id: 'incidents', label: 'Incidents', icon: AlertTriangle, path: '/incidents' },
+        { id: 'map', label: 'Live Map', icon: MapPin, path: '/map' },
+        { id: 'reports', label: 'Reports', icon: FileText, path: '/reports' },
+        ...(userRole === 'admin' ? [{ id: 'settings', label: 'Settings', icon: Settings, path: '/settings' }] : [])
       ];
     }
+    // No menu items for viewers in the admin panel
+    return [];
   };
 
   const menuItems = getMenuItems();
@@ -41,14 +36,6 @@ const Navbar = ({ currentPage, setCurrentPage, userRole, isMobile }) => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  // Mobile menu animation handled by CSS
-
-  const handleNavClick = (pageId) => {
-    setCurrentPage(pageId);
-    setMobileMenuOpen(false);
-    setDropdownOpen(false);
-  };
 
   return (
     <nav className="fixed top-0 right-0 left-0 bg-white/95 backdrop-blur-lg border-b border-slate-200/50 z-50 shadow-sm">
@@ -69,12 +56,13 @@ const Navbar = ({ currentPage, setCurrentPage, userRole, isMobile }) => {
           <div className="hidden lg:flex items-center gap-1">
             {menuItems.map((item) => {
               const Icon = item.icon;
-              const isActive = currentPage === item.id;
+              // Check if current path starts with the item's path
+              const isActive = location.pathname.startsWith(item.path);
               
               return (
-                <button
+                <Link
                   key={item.id}
-                  onClick={() => handleNavClick(item.id)}
+                  to={item.path} // Use Link's "to" prop for navigation
                   className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 group ${
                     isActive
                       ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/50'
@@ -83,7 +71,7 @@ const Navbar = ({ currentPage, setCurrentPage, userRole, isMobile }) => {
                 >
                   <Icon className={`w-5 h-5 ${isActive ? 'scale-110' : 'group-hover:scale-110'} transition-transform duration-200`} />
                   <span className="font-medium">{item.label}</span>
-                </button>
+                </Link>
               );
             })}
           </div>
@@ -114,7 +102,7 @@ const Navbar = ({ currentPage, setCurrentPage, userRole, isMobile }) => {
           <div className="hidden sm:block w-px h-6 bg-slate-200"></div>
 
           {/* Desktop Dropdown Menu */}
-          <div className="hidden lg:block relative" ref={dropdownRef}>
+          <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setDropdownOpen(!dropdownOpen)}
               className="flex items-center gap-2 px-3 py-2 hover:bg-slate-100 rounded-lg transition-colors group"
@@ -143,68 +131,10 @@ const Navbar = ({ currentPage, setCurrentPage, userRole, isMobile }) => {
             )}
           </div>
 
-          {/* Mobile Menu Button */}
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="lg:hidden p-2 hover:bg-slate-100 rounded-lg transition-all duration-200"
-            aria-label="Toggle menu"
-          >
-            {mobileMenuOpen ? (
-              <X className="w-6 h-6 text-slate-700" />
-            ) : (
-              <Menu className="w-6 h-6 text-slate-700" />
-            )}
-          </button>
+          {/* Mobile Menu Button - REMOVED */}
+          {/* The mobile menu dropdown is also REMOVED */}
         </div>
       </div>
-
-      {/* Mobile Menu */}
-      {mobileMenuOpen && (
-        <div 
-          ref={menuRef}
-          className="lg:hidden border-t border-slate-200 bg-white animate-fadeIn"
-        >
-          <div className="px-4 py-2 space-y-1">
-            {menuItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = currentPage === item.id;
-              
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => handleNavClick(item.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
-                    isActive
-                      ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg'
-                      : 'text-slate-700 hover:bg-slate-100'
-                  }`}
-                >
-                  <Icon className="w-5 h-5" />
-                  <span className="font-medium">{item.label}</span>
-                </button>
-              );
-            })}
-            
-            {/* Mobile User Section */}
-            <div className="pt-4 mt-4 border-t border-slate-200">
-              <div className="px-4 py-3 bg-slate-50 rounded-xl mb-2">
-                <p className="font-semibold text-slate-900 text-sm capitalize">{userRole || 'Guest'}</p>
-                <p className="text-xs text-slate-600 truncate">{user?.email || 'No email'}</p>
-              </div>
-              <button
-                onClick={() => {
-                  logout();
-                  setMobileMenuOpen(false);
-                }}
-                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-red-50 hover:text-red-600 rounded-xl transition-colors"
-              >
-                <LogOut className="w-5 h-5" />
-                <span className="font-medium">Logout</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </nav>
   );
 };

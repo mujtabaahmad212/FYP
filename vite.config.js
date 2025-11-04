@@ -17,6 +17,9 @@ export default defineConfig({
     port: 5173,
     strictPort: false, // Allow automatic port selection if 5173 is taken
     open: false, // Don't auto-open browser
+    headers: {
+      'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
+    },
     // Optimize WebSocket connection for HMR
     hmr: {
       overlay: true,

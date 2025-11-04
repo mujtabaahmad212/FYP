@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, Save, Bell, Mail, Smartphone, Palette, Map, Shield } from 'lucide-react';
+import { Settings as SettingsIcon, Save, Bell, Palette, Shield } from 'lucide-react';
 import { useSettings } from '../context/SettingsContext';
 
 const Settings = () => {
@@ -29,10 +29,10 @@ const Settings = () => {
   };
 
   const ToggleSwitch = ({ checked, onChange, label, description }) => (
-    <div className="flex items-center justify-between py-4 border-b border-slate-200 last:border-0">
+    <div className="flex items-center justify-between py-4 border-b border-slate-200 dark:border-slate-700 last:border-0">
       <div className="flex-1">
-        <p className="font-medium text-slate-900">{label}</p>
-        {description && <p className="text-sm text-slate-600 mt-1">{description}</p>}
+        <p className="font-medium text-slate-900 dark:text-slate-200">{label}</p>
+        {description && <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{description}</p>}
       </div>
       <label className="relative inline-flex items-center cursor-pointer">
         <input
@@ -41,7 +41,7 @@ const Settings = () => {
           onChange={onChange}
           className="sr-only peer"
         />
-        <div className="w-14 h-7 bg-slate-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-blue-600"></div>
+        <div className="w-14 h-7 bg-slate-300 dark:bg-slate-600 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-blue-600"></div>
       </label>
     </div>
   );
@@ -53,16 +53,16 @@ const Settings = () => {
           <SettingsIcon className="w-6 h-6 text-white" />
         </div>
         <div>
-          <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 gradient-text">System Settings</h2>
-          <p className="text-slate-600 mt-1">Configure your security system preferences</p>
+          <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-slate-200 gradient-text">System Settings</h2>
+          <p className="text-slate-600 dark:text-slate-400 mt-1">Configure your security system preferences</p>
         </div>
       </div>
       
       {/* Notifications */}
-      <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-200 card-hover">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-6 border border-slate-200 dark:border-slate-700 card-hover">
         <div className="flex items-center gap-2 mb-6">
-          <Bell className="w-5 h-5 text-blue-600" />
-          <h3 className="text-lg font-semibold text-slate-900">Notification Preferences</h3>
+          <Bell className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-200">Notification Preferences</h3>
         </div>
         <div className="space-y-2">
           <ToggleSwitch
@@ -93,10 +93,10 @@ const Settings = () => {
       </div>
 
       {/* Features */}
-      <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-200 card-hover">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-6 border border-slate-200 dark:border-slate-700 card-hover">
         <div className="flex items-center gap-2 mb-6">
-          <Shield className="w-5 h-5 text-blue-600" />
-          <h3 className="text-lg font-semibold text-slate-900">System Features</h3>
+          <Shield className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-200">System Features</h3>
         </div>
         <div className="space-y-2">
           <ToggleSwitch
@@ -121,18 +121,18 @@ const Settings = () => {
       </div>
 
       {/* Appearance */}
-      <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-200 card-hover">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-6 border border-slate-200 dark:border-slate-700 card-hover">
         <div className="flex items-center gap-2 mb-6">
-          <Palette className="w-5 h-5 text-blue-600" />
-          <h3 className="text-lg font-semibold text-slate-900">Appearance</h3>
+          <Palette className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-200">Appearance</h3>
         </div>
         <div className="space-y-4">
           <div>
-            <label className="block font-medium text-slate-900 mb-2">Theme</label>
+            <label className="block font-medium text-slate-900 dark:text-slate-200 mb-2">Theme</label>
             <select 
               value={localSettings.appearance?.theme || 'light'}
               onChange={(e) => handleChange('appearance', 'theme', e.target.value)} 
-              className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+              className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200"
             >
               <option value="light">Light</option>
               <option value="dark">Dark</option>
@@ -140,11 +140,11 @@ const Settings = () => {
             </select>
           </div>
           <div>
-            <label className="block font-medium text-slate-900 mb-2">Language</label>
+            <label className="block font-medium text-slate-900 dark:text-slate-200 mb-2">Language</label>
             <select 
               value={localSettings.appearance?.language || 'en'}
               onChange={(e) => handleChange('appearance', 'language', e.target.value)} 
-              className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+              className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200"
             >
               <option value="en">English</option>
               <option value="ur">Urdu</option>
@@ -152,11 +152,11 @@ const Settings = () => {
             </select>
           </div>
           <div>
-            <label className="block font-medium text-slate-900 mb-2">Date Format</label>
+            <label className="block font-medium text-slate-900 dark:text-slate-200 mb-2">Date Format</label>
             <select 
               value={localSettings.appearance?.dateFormat || 'MM/DD/YYYY'}
               onChange={(e) => handleChange('appearance', 'dateFormat', e.target.value)} 
-              className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+              className="w-full px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-200"
             >
               <option value="MM/DD/YYYY">MM/DD/YYYY</option>
               <option value="DD/MM/YYYY">DD/MM/YYYY</option>

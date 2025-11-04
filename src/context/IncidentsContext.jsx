@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { incidentAPI } from '../utils/api';
 import { useAuth } from './AuthContext';
+import { useSettings } from './SettingsContext';
+import { sendNotifications } from '../utils/notifications';
 
 const IncidentsContext = createContext();
 
@@ -14,6 +16,7 @@ export const useIncidents = () => {
 
 export const IncidentsProvider = ({ children }) => {
   const { isAuthenticated, userRole } = useAuth();
+  const { settings } = useSettings();
   const [incidents, setIncidents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -64,6 +67,9 @@ export const IncidentsProvider = ({ children }) => {
       // Add to local state
       setIncidents(prev => [...prev, newIncident]);
       
+      // Send notifications
+      await sendNotifications(newIncident, settings);
+
       // Refresh list
       await fetchIncidents();
       
@@ -75,7 +81,7 @@ export const IncidentsProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, [fetchIncidents]);
+  }, [fetchIncidents, settings]);
 
   // Public incident report (for viewers)
   const reportPublicIncident = useCallback(async (incidentData) => {
@@ -87,6 +93,9 @@ export const IncidentsProvider = ({ children }) => {
       // Add to local state so it appears immediately
       setIncidents(prev => [...prev, newIncident]);
       
+      // Send notifications
+      await sendNotifications(newIncident, settings);
+
       // Store tracking ID
       if (response.trackingId || newIncident.id) {
         localStorage.setItem('viewerIncidentId', (response.trackingId || newIncident.id).toString());
@@ -100,7 +109,7 @@ export const IncidentsProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [settings]);
 
   // Update incident
   const updateIncident = useCallback(async (id, updates) => {

@@ -1,0 +1,60 @@
+/* Import Leaflet CSS */
+@import 'leaflet/dist/leaflet.css';
+
+/* Fix for Leaflet marker images */
+.leaflet-default-icon-path {
+  background-image: url('https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png');
+}
+
+.leaflet-default-shadow-path {
+  background-image: url('https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png');
+}
+
+/* Map container styles */
+.map-container {
+  height: 300px;
+  width: 100%;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  z-index: 0;
+}
+
+/* Fix for marker icon positioning */
+.leaflet-div-icon {
+  background: transparent;
+  border: none;
+}
+
+/* Custom marker icons */
+.marker-icon {
+  width: 25px !important;
+  height: 41px !important;
+  margin-left: -12px !important;
+  margin-top: -41px !important;
+}
+
+/* Popup styles */
+.leaflet-popup-content-wrapper {
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+}
+
+.leaflet-popup-content {
+  margin: 0;
+  padding: 0.5rem;
+}
+
+/* Map interaction styles */
+.leaflet-control-zoom {
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.leaflet-control-zoom a {
+  background-color: white;
+  color: #4b5563;
+}
+
+.leaflet-control-zoom a:hover {
+  background-color: #f3f4f6;
+}

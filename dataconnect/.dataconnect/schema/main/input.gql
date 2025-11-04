@@ -1,0 +1,1617 @@
+"""
+✨ `Comment_KeyOutput` returns the primary key fields of table type `Comment`.
+
+It has the same format as `Comment_Key`, but is only used as mutation return value.
+"""
+scalar Comment_KeyOutput
+"""
+✨ `Incident_KeyOutput` returns the primary key fields of table type `Incident`.
+
+It has the same format as `Incident_Key`, but is only used as mutation return value.
+"""
+scalar Incident_KeyOutput
+"""
+✨ `Notification_KeyOutput` returns the primary key fields of table type `Notification`.
+
+It has the same format as `Notification_Key`, but is only used as mutation return value.
+"""
+scalar Notification_KeyOutput
+"""
+✨ `StatusUpdate_KeyOutput` returns the primary key fields of table type `StatusUpdate`.
+
+It has the same format as `StatusUpdate_Key`, but is only used as mutation return value.
+"""
+scalar StatusUpdate_KeyOutput
+"""
+✨ `User_KeyOutput` returns the primary key fields of table type `User`.
+
+It has the same format as `User_Key`, but is only used as mutation return value.
+"""
+scalar User_KeyOutput
+"""
+✨ Generated data input type for table 'Comment'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input Comment_Data {
+  """
+  ✨ Generated from Field `Comment`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `Comment`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr
+  """
+  ✨ Generated from Field `Comment`.`authorId` of type `UUID`
+  """
+  authorId: UUID
+  """
+  ✨ `_expr` server value variant of `authorId` (✨ Generated from Field `Comment`.`authorId` of type `UUID`)
+  """
+  authorId_expr: UUID_Expr
+  """
+  ✨ Generated from Field `Comment`.`incidentId` of type `UUID`
+  """
+  incidentId: UUID
+  """
+  ✨ `_expr` server value variant of `incidentId` (✨ Generated from Field `Comment`.`incidentId` of type `UUID`)
+  """
+  incidentId_expr: UUID_Expr
+  """
+  ✨ Generated from Field `Comment`.`author` of type `User`
+  """
+  author: User_Key
+  """
+  ✨ Generated from Field `Comment`.`incident` of type `Incident`
+  """
+  incident: Incident_Key
+  """
+  ✨ Generated from Field `Comment`.`content` of type `String!`
+  """
+  content: String
+  """
+  ✨ `_expr` server value variant of `content` (✨ Generated from Field `Comment`.`content` of type `String!`)
+  """
+  content_expr: String_Expr
+  """
+  ✨ Generated from Field `Comment`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `createdAt` (✨ Generated from Field `Comment`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `createdAt` (✨ Generated from Field `Comment`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `createdAt` (✨ Generated from Field `Comment`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_update: [Timestamp_Update!]
+  """
+  ✨ Generated from Field `Comment`.`isInternal` of type `Boolean`
+  """
+  isInternal: Boolean
+  """
+  ✨ `_expr` server value variant of `isInternal` (✨ Generated from Field `Comment`.`isInternal` of type `Boolean`)
+  """
+  isInternal_expr: Boolean_Expr
+}
+"""
+✨ Generated filter input type for table 'Comment'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input Comment_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [Comment_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: Comment_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [Comment_Filter!]
+  """
+  ✨ Generated from Field `Comment`.`id` of type `UUID!`
+  """
+  id: UUID_Filter
+  """
+  ✨ Generated from Field `Comment`.`authorId` of type `UUID`
+  """
+  authorId: UUID_Filter
+  """
+  ✨ Generated from Field `Comment`.`incidentId` of type `UUID`
+  """
+  incidentId: UUID_Filter
+  """
+  ✨ Generated from Field `Comment`.`author` of type `User`
+  """
+  author: User_Filter
+  """
+  ✨ Generated from Field `Comment`.`incident` of type `Incident`
+  """
+  incident: Incident_Filter
+  """
+  ✨ Generated from Field `Comment`.`content` of type `String!`
+  """
+  content: String_Filter
+  """
+  ✨ Generated from Field `Comment`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp_Filter
+  """
+  ✨ Generated from Field `Comment`.`isInternal` of type `Boolean`
+  """
+  isInternal: Boolean_Filter
+}
+"""
+✨ Generated first-row input type for table 'Comment'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input Comment_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [Comment_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: Comment_Filter
+}
+"""
+✨ Generated having input type for table 'Comment'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input Comment_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [Comment_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: Comment_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [Comment_Having!]
+  """
+  ✨ Generated from Field `Comment`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `Comment`.`authorId_count` of type `Int!`
+  """
+  authorId_count: Int_Filter
+  """
+  ✨ Generated from Field `Comment`.`content_count` of type `Int!`
+  """
+  content_count: Int_Filter
+  """
+  ✨ Generated from Field `Comment`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: Int_Filter
+  """
+  ✨ Generated from Field `Comment`.`id_count` of type `Int!`
+  """
+  id_count: Int_Filter
+  """
+  ✨ Generated from Field `Comment`.`incidentId_count` of type `Int!`
+  """
+  incidentId_count: Int_Filter
+  """
+  ✨ Generated from Field `Comment`.`isInternal_count` of type `Int!`
+  """
+  isInternal_count: Int_Filter
+  """
+  ✨ Generated from Field `Comment`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `Comment`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: Timestamp_Filter
+}
+"""
+✨ Generated key input type for table 'Comment'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input Comment_Key {
+  """
+  ✨ Generated from Field `Comment`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `Comment`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr
+}
+"""
+✨ Generated list filter input type for table 'Comment'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input Comment_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: Comment_Filter
+}
+"""
+✨ Generated order input type for table 'Comment'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input Comment_Order {
+  """
+  ✨ Generated from Field `Comment`.`id` of type `UUID!`
+  """
+  id: OrderDirection
+  """
+  ✨ Generated from Field `Comment`.`authorId` of type `UUID`
+  """
+  authorId: OrderDirection
+  """
+  ✨ Generated from Field `Comment`.`incidentId` of type `UUID`
+  """
+  incidentId: OrderDirection
+  """
+  ✨ Generated from Field `Comment`.`author` of type `User`
+  """
+  author: User_Order
+  """
+  ✨ Generated from Field `Comment`.`incident` of type `Incident`
+  """
+  incident: Incident_Order
+  """
+  ✨ Generated from Field `Comment`.`content` of type `String!`
+  """
+  content: OrderDirection
+  """
+  ✨ Generated from Field `Comment`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: OrderDirection
+  """
+  ✨ Generated from Field `Comment`.`isInternal` of type `Boolean`
+  """
+  isInternal: OrderDirection
+  """
+  ✨ Generated from Field `Comment`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `Comment`.`authorId_count` of type `Int!`
+  """
+  authorId_count: OrderDirection
+  """
+  ✨ Generated from Field `Comment`.`content_count` of type `Int!`
+  """
+  content_count: OrderDirection
+  """
+  ✨ Generated from Field `Comment`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: OrderDirection
+  """
+  ✨ Generated from Field `Comment`.`id_count` of type `Int!`
+  """
+  id_count: OrderDirection
+  """
+  ✨ Generated from Field `Comment`.`incidentId_count` of type `Int!`
+  """
+  incidentId_count: OrderDirection
+  """
+  ✨ Generated from Field `Comment`.`isInternal_count` of type `Int!`
+  """
+  isInternal_count: OrderDirection
+  """
+  ✨ Generated from Field `Comment`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: OrderDirection
+  """
+  ✨ Generated from Field `Comment`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: OrderDirection
+}
+"""
+✨ Generated data input type for table 'Incident'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input Incident_Data {
+  """
+  ✨ Generated from Field `Incident`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `Incident`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr
+  """
+  ✨ Generated from Field `Incident`.`assigneeId` of type `UUID`
+  """
+  assigneeId: UUID
+  """
+  ✨ `_expr` server value variant of `assigneeId` (✨ Generated from Field `Incident`.`assigneeId` of type `UUID`)
+  """
+  assigneeId_expr: UUID_Expr
+  """
+  ✨ Generated from Field `Incident`.`reporterId` of type `UUID`
+  """
+  reporterId: UUID
+  """
+  ✨ `_expr` server value variant of `reporterId` (✨ Generated from Field `Incident`.`reporterId` of type `UUID`)
+  """
+  reporterId_expr: UUID_Expr
+  """
+  ✨ Generated from Field `Incident`.`assignee` of type `User`
+  """
+  assignee: User_Key
+  """
+  ✨ Generated from Field `Incident`.`reporter` of type `User`
+  """
+  reporter: User_Key
+  """
+  ✨ Generated from Field `Incident`.`category` of type `String`
+  """
+  category: String
+  """
+  ✨ `_expr` server value variant of `category` (✨ Generated from Field `Incident`.`category` of type `String`)
+  """
+  category_expr: String_Expr
+  """
+  ✨ Generated from Field `Incident`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `createdAt` (✨ Generated from Field `Incident`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `createdAt` (✨ Generated from Field `Incident`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `createdAt` (✨ Generated from Field `Incident`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_update: [Timestamp_Update!]
+  """
+  ✨ Generated from Field `Incident`.`description` of type `String!`
+  """
+  description: String
+  """
+  ✨ `_expr` server value variant of `description` (✨ Generated from Field `Incident`.`description` of type `String!`)
+  """
+  description_expr: String_Expr
+  """
+  ✨ Generated from Field `Incident`.`severity` of type `String`
+  """
+  severity: String
+  """
+  ✨ `_expr` server value variant of `severity` (✨ Generated from Field `Incident`.`severity` of type `String`)
+  """
+  severity_expr: String_Expr
+  """
+  ✨ Generated from Field `Incident`.`status` of type `String!`
+  """
+  status: String
+  """
+  ✨ `_expr` server value variant of `status` (✨ Generated from Field `Incident`.`status` of type `String!`)
+  """
+  status_expr: String_Expr
+  """
+  ✨ Generated from Field `Incident`.`title` of type `String!`
+  """
+  title: String
+  """
+  ✨ `_expr` server value variant of `title` (✨ Generated from Field `Incident`.`title` of type `String!`)
+  """
+  title_expr: String_Expr
+}
+"""
+✨ Generated filter input type for table 'Incident'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input Incident_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [Incident_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: Incident_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [Incident_Filter!]
+  """
+  ✨ Generated from Field `Incident`.`id` of type `UUID!`
+  """
+  id: UUID_Filter
+  """
+  ✨ Generated from Field `Incident`.`assigneeId` of type `UUID`
+  """
+  assigneeId: UUID_Filter
+  """
+  ✨ Generated from Field `Incident`.`reporterId` of type `UUID`
+  """
+  reporterId: UUID_Filter
+  """
+  ✨ Generated from Field `Incident`.`assignee` of type `User`
+  """
+  assignee: User_Filter
+  """
+  ✨ Generated from Field `Incident`.`reporter` of type `User`
+  """
+  reporter: User_Filter
+  """
+  ✨ Generated from Field `Incident`.`category` of type `String`
+  """
+  category: String_Filter
+  """
+  ✨ Generated from Field `Incident`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp_Filter
+  """
+  ✨ Generated from Field `Incident`.`description` of type `String!`
+  """
+  description: String_Filter
+  """
+  ✨ Generated from Field `Incident`.`severity` of type `String`
+  """
+  severity: String_Filter
+  """
+  ✨ Generated from Field `Incident`.`status` of type `String!`
+  """
+  status: String_Filter
+  """
+  ✨ Generated from Field `Incident`.`title` of type `String!`
+  """
+  title: String_Filter
+  """
+  ✨ Generated from Field `Incident`.`comments_on_incident` of type `[Comment!]!`
+  """
+  comments_on_incident: Comment_ListFilter
+  """
+  ✨ Generated from Field `Incident`.`notifications_on_incident` of type `[Notification!]!`
+  """
+  notifications_on_incident: Notification_ListFilter
+  """
+  ✨ Generated from Field `Incident`.`statusUpdates_on_incident` of type `[StatusUpdate!]!`
+  """
+  statusUpdates_on_incident: StatusUpdate_ListFilter
+}
+"""
+✨ Generated first-row input type for table 'Incident'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input Incident_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [Incident_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: Incident_Filter
+}
+"""
+✨ Generated having input type for table 'Incident'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input Incident_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [Incident_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: Incident_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [Incident_Having!]
+  """
+  ✨ Generated from Field `Incident`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `Incident`.`assigneeId_count` of type `Int!`
+  """
+  assigneeId_count: Int_Filter
+  """
+  ✨ Generated from Field `Incident`.`category_count` of type `Int!`
+  """
+  category_count: Int_Filter
+  """
+  ✨ Generated from Field `Incident`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: Int_Filter
+  """
+  ✨ Generated from Field `Incident`.`description_count` of type `Int!`
+  """
+  description_count: Int_Filter
+  """
+  ✨ Generated from Field `Incident`.`id_count` of type `Int!`
+  """
+  id_count: Int_Filter
+  """
+  ✨ Generated from Field `Incident`.`reporterId_count` of type `Int!`
+  """
+  reporterId_count: Int_Filter
+  """
+  ✨ Generated from Field `Incident`.`severity_count` of type `Int!`
+  """
+  severity_count: Int_Filter
+  """
+  ✨ Generated from Field `Incident`.`status_count` of type `Int!`
+  """
+  status_count: Int_Filter
+  """
+  ✨ Generated from Field `Incident`.`title_count` of type `Int!`
+  """
+  title_count: Int_Filter
+  """
+  ✨ Generated from Field `Incident`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `Incident`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: Timestamp_Filter
+}
+"""
+✨ Generated key input type for table 'Incident'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input Incident_Key {
+  """
+  ✨ Generated from Field `Incident`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `Incident`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr
+}
+"""
+✨ Generated list filter input type for table 'Incident'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input Incident_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: Incident_Filter
+}
+"""
+✨ Generated order input type for table 'Incident'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input Incident_Order {
+  """
+  ✨ Generated from Field `Incident`.`id` of type `UUID!`
+  """
+  id: OrderDirection
+  """
+  ✨ Generated from Field `Incident`.`assigneeId` of type `UUID`
+  """
+  assigneeId: OrderDirection
+  """
+  ✨ Generated from Field `Incident`.`reporterId` of type `UUID`
+  """
+  reporterId: OrderDirection
+  """
+  ✨ Generated from Field `Incident`.`assignee` of type `User`
+  """
+  assignee: User_Order
+  """
+  ✨ Generated from Field `Incident`.`reporter` of type `User`
+  """
+  reporter: User_Order
+  """
+  ✨ Generated from Field `Incident`.`category` of type `String`
+  """
+  category: OrderDirection
+  """
+  ✨ Generated from Field `Incident`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: OrderDirection
+  """
+  ✨ Generated from Field `Incident`.`description` of type `String!`
+  """
+  description: OrderDirection
+  """
+  ✨ Generated from Field `Incident`.`severity` of type `String`
+  """
+  severity: OrderDirection
+  """
+  ✨ Generated from Field `Incident`.`status` of type `String!`
+  """
+  status: OrderDirection
+  """
+  ✨ Generated from Field `Incident`.`title` of type `String!`
+  """
+  title: OrderDirection
+  """
+  ✨ Generated from Field `Incident`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `Incident`.`assigneeId_count` of type `Int!`
+  """
+  assigneeId_count: OrderDirection
+  """
+  ✨ Generated from Field `Incident`.`category_count` of type `Int!`
+  """
+  category_count: OrderDirection
+  """
+  ✨ Generated from Field `Incident`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: OrderDirection
+  """
+  ✨ Generated from Field `Incident`.`description_count` of type `Int!`
+  """
+  description_count: OrderDirection
+  """
+  ✨ Generated from Field `Incident`.`id_count` of type `Int!`
+  """
+  id_count: OrderDirection
+  """
+  ✨ Generated from Field `Incident`.`reporterId_count` of type `Int!`
+  """
+  reporterId_count: OrderDirection
+  """
+  ✨ Generated from Field `Incident`.`severity_count` of type `Int!`
+  """
+  severity_count: OrderDirection
+  """
+  ✨ Generated from Field `Incident`.`status_count` of type `Int!`
+  """
+  status_count: OrderDirection
+  """
+  ✨ Generated from Field `Incident`.`title_count` of type `Int!`
+  """
+  title_count: OrderDirection
+  """
+  ✨ Generated from Field `Incident`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: OrderDirection
+  """
+  ✨ Generated from Field `Incident`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: OrderDirection
+}
+"""
+✨ Generated data input type for table 'Notification'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input Notification_Data {
+  """
+  ✨ Generated from Field `Notification`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `Notification`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr
+  """
+  ✨ Generated from Field `Notification`.`incidentId` of type `UUID`
+  """
+  incidentId: UUID
+  """
+  ✨ `_expr` server value variant of `incidentId` (✨ Generated from Field `Notification`.`incidentId` of type `UUID`)
+  """
+  incidentId_expr: UUID_Expr
+  """
+  ✨ Generated from Field `Notification`.`recipientId` of type `UUID`
+  """
+  recipientId: UUID
+  """
+  ✨ `_expr` server value variant of `recipientId` (✨ Generated from Field `Notification`.`recipientId` of type `UUID`)
+  """
+  recipientId_expr: UUID_Expr
+  """
+  ✨ Generated from Field `Notification`.`incident` of type `Incident`
+  """
+  incident: Incident_Key
+  """
+  ✨ Generated from Field `Notification`.`recipient` of type `User`
+  """
+  recipient: User_Key
+  """
+  ✨ Generated from Field `Notification`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `createdAt` (✨ Generated from Field `Notification`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `createdAt` (✨ Generated from Field `Notification`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `createdAt` (✨ Generated from Field `Notification`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_update: [Timestamp_Update!]
+  """
+  ✨ Generated from Field `Notification`.`isRead` of type `Boolean!`
+  """
+  isRead: Boolean
+  """
+  ✨ `_expr` server value variant of `isRead` (✨ Generated from Field `Notification`.`isRead` of type `Boolean!`)
+  """
+  isRead_expr: Boolean_Expr
+  """
+  ✨ Generated from Field `Notification`.`message` of type `String!`
+  """
+  message: String
+  """
+  ✨ `_expr` server value variant of `message` (✨ Generated from Field `Notification`.`message` of type `String!`)
+  """
+  message_expr: String_Expr
+  """
+  ✨ Generated from Field `Notification`.`type` of type `String`
+  """
+  type: String
+  """
+  ✨ `_expr` server value variant of `type` (✨ Generated from Field `Notification`.`type` of type `String`)
+  """
+  type_expr: String_Expr
+}
+"""
+✨ Generated filter input type for table 'Notification'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input Notification_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [Notification_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: Notification_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [Notification_Filter!]
+  """
+  ✨ Generated from Field `Notification`.`id` of type `UUID!`
+  """
+  id: UUID_Filter
+  """
+  ✨ Generated from Field `Notification`.`incidentId` of type `UUID`
+  """
+  incidentId: UUID_Filter
+  """
+  ✨ Generated from Field `Notification`.`recipientId` of type `UUID`
+  """
+  recipientId: UUID_Filter
+  """
+  ✨ Generated from Field `Notification`.`incident` of type `Incident`
+  """
+  incident: Incident_Filter
+  """
+  ✨ Generated from Field `Notification`.`recipient` of type `User`
+  """
+  recipient: User_Filter
+  """
+  ✨ Generated from Field `Notification`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp_Filter
+  """
+  ✨ Generated from Field `Notification`.`isRead` of type `Boolean!`
+  """
+  isRead: Boolean_Filter
+  """
+  ✨ Generated from Field `Notification`.`message` of type `String!`
+  """
+  message: String_Filter
+  """
+  ✨ Generated from Field `Notification`.`type` of type `String`
+  """
+  type: String_Filter
+}
+"""
+✨ Generated first-row input type for table 'Notification'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input Notification_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [Notification_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: Notification_Filter
+}
+"""
+✨ Generated having input type for table 'Notification'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input Notification_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [Notification_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: Notification_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [Notification_Having!]
+  """
+  ✨ Generated from Field `Notification`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `Notification`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: Int_Filter
+  """
+  ✨ Generated from Field `Notification`.`id_count` of type `Int!`
+  """
+  id_count: Int_Filter
+  """
+  ✨ Generated from Field `Notification`.`incidentId_count` of type `Int!`
+  """
+  incidentId_count: Int_Filter
+  """
+  ✨ Generated from Field `Notification`.`isRead_count` of type `Int!`
+  """
+  isRead_count: Int_Filter
+  """
+  ✨ Generated from Field `Notification`.`message_count` of type `Int!`
+  """
+  message_count: Int_Filter
+  """
+  ✨ Generated from Field `Notification`.`recipientId_count` of type `Int!`
+  """
+  recipientId_count: Int_Filter
+  """
+  ✨ Generated from Field `Notification`.`type_count` of type `Int!`
+  """
+  type_count: Int_Filter
+  """
+  ✨ Generated from Field `Notification`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `Notification`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: Timestamp_Filter
+}
+"""
+✨ Generated key input type for table 'Notification'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input Notification_Key {
+  """
+  ✨ Generated from Field `Notification`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `Notification`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr
+}
+"""
+✨ Generated list filter input type for table 'Notification'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input Notification_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: Notification_Filter
+}
+"""
+✨ Generated order input type for table 'Notification'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input Notification_Order {
+  """
+  ✨ Generated from Field `Notification`.`id` of type `UUID!`
+  """
+  id: OrderDirection
+  """
+  ✨ Generated from Field `Notification`.`incidentId` of type `UUID`
+  """
+  incidentId: OrderDirection
+  """
+  ✨ Generated from Field `Notification`.`recipientId` of type `UUID`
+  """
+  recipientId: OrderDirection
+  """
+  ✨ Generated from Field `Notification`.`incident` of type `Incident`
+  """
+  incident: Incident_Order
+  """
+  ✨ Generated from Field `Notification`.`recipient` of type `User`
+  """
+  recipient: User_Order
+  """
+  ✨ Generated from Field `Notification`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: OrderDirection
+  """
+  ✨ Generated from Field `Notification`.`isRead` of type `Boolean!`
+  """
+  isRead: OrderDirection
+  """
+  ✨ Generated from Field `Notification`.`message` of type `String!`
+  """
+  message: OrderDirection
+  """
+  ✨ Generated from Field `Notification`.`type` of type `String`
+  """
+  type: OrderDirection
+  """
+  ✨ Generated from Field `Notification`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `Notification`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: OrderDirection
+  """
+  ✨ Generated from Field `Notification`.`id_count` of type `Int!`
+  """
+  id_count: OrderDirection
+  """
+  ✨ Generated from Field `Notification`.`incidentId_count` of type `Int!`
+  """
+  incidentId_count: OrderDirection
+  """
+  ✨ Generated from Field `Notification`.`isRead_count` of type `Int!`
+  """
+  isRead_count: OrderDirection
+  """
+  ✨ Generated from Field `Notification`.`message_count` of type `Int!`
+  """
+  message_count: OrderDirection
+  """
+  ✨ Generated from Field `Notification`.`recipientId_count` of type `Int!`
+  """
+  recipientId_count: OrderDirection
+  """
+  ✨ Generated from Field `Notification`.`type_count` of type `Int!`
+  """
+  type_count: OrderDirection
+  """
+  ✨ Generated from Field `Notification`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: OrderDirection
+  """
+  ✨ Generated from Field `Notification`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: OrderDirection
+}
+"""
+✨ Generated data input type for table 'StatusUpdate'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input StatusUpdate_Data {
+  """
+  ✨ Generated from Field `StatusUpdate`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `StatusUpdate`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr
+  """
+  ✨ Generated from Field `StatusUpdate`.`incidentId` of type `UUID`
+  """
+  incidentId: UUID
+  """
+  ✨ `_expr` server value variant of `incidentId` (✨ Generated from Field `StatusUpdate`.`incidentId` of type `UUID`)
+  """
+  incidentId_expr: UUID_Expr
+  """
+  ✨ Generated from Field `StatusUpdate`.`updaterId` of type `UUID`
+  """
+  updaterId: UUID
+  """
+  ✨ `_expr` server value variant of `updaterId` (✨ Generated from Field `StatusUpdate`.`updaterId` of type `UUID`)
+  """
+  updaterId_expr: UUID_Expr
+  """
+  ✨ Generated from Field `StatusUpdate`.`incident` of type `Incident`
+  """
+  incident: Incident_Key
+  """
+  ✨ Generated from Field `StatusUpdate`.`updater` of type `User`
+  """
+  updater: User_Key
+  """
+  ✨ Generated from Field `StatusUpdate`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `createdAt` (✨ Generated from Field `StatusUpdate`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `createdAt` (✨ Generated from Field `StatusUpdate`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `createdAt` (✨ Generated from Field `StatusUpdate`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_update: [Timestamp_Update!]
+  """
+  ✨ Generated from Field `StatusUpdate`.`newStatus` of type `String!`
+  """
+  newStatus: String
+  """
+  ✨ `_expr` server value variant of `newStatus` (✨ Generated from Field `StatusUpdate`.`newStatus` of type `String!`)
+  """
+  newStatus_expr: String_Expr
+  """
+  ✨ Generated from Field `StatusUpdate`.`notes` of type `String`
+  """
+  notes: String
+  """
+  ✨ `_expr` server value variant of `notes` (✨ Generated from Field `StatusUpdate`.`notes` of type `String`)
+  """
+  notes_expr: String_Expr
+  """
+  ✨ Generated from Field `StatusUpdate`.`oldStatus` of type `String!`
+  """
+  oldStatus: String
+  """
+  ✨ `_expr` server value variant of `oldStatus` (✨ Generated from Field `StatusUpdate`.`oldStatus` of type `String!`)
+  """
+  oldStatus_expr: String_Expr
+}
+"""
+✨ Generated filter input type for table 'StatusUpdate'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input StatusUpdate_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [StatusUpdate_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: StatusUpdate_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [StatusUpdate_Filter!]
+  """
+  ✨ Generated from Field `StatusUpdate`.`id` of type `UUID!`
+  """
+  id: UUID_Filter
+  """
+  ✨ Generated from Field `StatusUpdate`.`incidentId` of type `UUID`
+  """
+  incidentId: UUID_Filter
+  """
+  ✨ Generated from Field `StatusUpdate`.`updaterId` of type `UUID`
+  """
+  updaterId: UUID_Filter
+  """
+  ✨ Generated from Field `StatusUpdate`.`incident` of type `Incident`
+  """
+  incident: Incident_Filter
+  """
+  ✨ Generated from Field `StatusUpdate`.`updater` of type `User`
+  """
+  updater: User_Filter
+  """
+  ✨ Generated from Field `StatusUpdate`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp_Filter
+  """
+  ✨ Generated from Field `StatusUpdate`.`newStatus` of type `String!`
+  """
+  newStatus: String_Filter
+  """
+  ✨ Generated from Field `StatusUpdate`.`notes` of type `String`
+  """
+  notes: String_Filter
+  """
+  ✨ Generated from Field `StatusUpdate`.`oldStatus` of type `String!`
+  """
+  oldStatus: String_Filter
+}
+"""
+✨ Generated first-row input type for table 'StatusUpdate'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input StatusUpdate_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [StatusUpdate_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: StatusUpdate_Filter
+}
+"""
+✨ Generated having input type for table 'StatusUpdate'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input StatusUpdate_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [StatusUpdate_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: StatusUpdate_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [StatusUpdate_Having!]
+  """
+  ✨ Generated from Field `StatusUpdate`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `StatusUpdate`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: Int_Filter
+  """
+  ✨ Generated from Field `StatusUpdate`.`id_count` of type `Int!`
+  """
+  id_count: Int_Filter
+  """
+  ✨ Generated from Field `StatusUpdate`.`incidentId_count` of type `Int!`
+  """
+  incidentId_count: Int_Filter
+  """
+  ✨ Generated from Field `StatusUpdate`.`newStatus_count` of type `Int!`
+  """
+  newStatus_count: Int_Filter
+  """
+  ✨ Generated from Field `StatusUpdate`.`notes_count` of type `Int!`
+  """
+  notes_count: Int_Filter
+  """
+  ✨ Generated from Field `StatusUpdate`.`oldStatus_count` of type `Int!`
+  """
+  oldStatus_count: Int_Filter
+  """
+  ✨ Generated from Field `StatusUpdate`.`updaterId_count` of type `Int!`
+  """
+  updaterId_count: Int_Filter
+  """
+  ✨ Generated from Field `StatusUpdate`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `StatusUpdate`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: Timestamp_Filter
+}
+"""
+✨ Generated key input type for table 'StatusUpdate'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input StatusUpdate_Key {
+  """
+  ✨ Generated from Field `StatusUpdate`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `StatusUpdate`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr
+}
+"""
+✨ Generated list filter input type for table 'StatusUpdate'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input StatusUpdate_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: StatusUpdate_Filter
+}
+"""
+✨ Generated order input type for table 'StatusUpdate'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input StatusUpdate_Order {
+  """
+  ✨ Generated from Field `StatusUpdate`.`id` of type `UUID!`
+  """
+  id: OrderDirection
+  """
+  ✨ Generated from Field `StatusUpdate`.`incidentId` of type `UUID`
+  """
+  incidentId: OrderDirection
+  """
+  ✨ Generated from Field `StatusUpdate`.`updaterId` of type `UUID`
+  """
+  updaterId: OrderDirection
+  """
+  ✨ Generated from Field `StatusUpdate`.`incident` of type `Incident`
+  """
+  incident: Incident_Order
+  """
+  ✨ Generated from Field `StatusUpdate`.`updater` of type `User`
+  """
+  updater: User_Order
+  """
+  ✨ Generated from Field `StatusUpdate`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: OrderDirection
+  """
+  ✨ Generated from Field `StatusUpdate`.`newStatus` of type `String!`
+  """
+  newStatus: OrderDirection
+  """
+  ✨ Generated from Field `StatusUpdate`.`notes` of type `String`
+  """
+  notes: OrderDirection
+  """
+  ✨ Generated from Field `StatusUpdate`.`oldStatus` of type `String!`
+  """
+  oldStatus: OrderDirection
+  """
+  ✨ Generated from Field `StatusUpdate`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `StatusUpdate`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: OrderDirection
+  """
+  ✨ Generated from Field `StatusUpdate`.`id_count` of type `Int!`
+  """
+  id_count: OrderDirection
+  """
+  ✨ Generated from Field `StatusUpdate`.`incidentId_count` of type `Int!`
+  """
+  incidentId_count: OrderDirection
+  """
+  ✨ Generated from Field `StatusUpdate`.`newStatus_count` of type `Int!`
+  """
+  newStatus_count: OrderDirection
+  """
+  ✨ Generated from Field `StatusUpdate`.`notes_count` of type `Int!`
+  """
+  notes_count: OrderDirection
+  """
+  ✨ Generated from Field `StatusUpdate`.`oldStatus_count` of type `Int!`
+  """
+  oldStatus_count: OrderDirection
+  """
+  ✨ Generated from Field `StatusUpdate`.`updaterId_count` of type `Int!`
+  """
+  updaterId_count: OrderDirection
+  """
+  ✨ Generated from Field `StatusUpdate`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: OrderDirection
+  """
+  ✨ Generated from Field `StatusUpdate`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: OrderDirection
+}
+"""
+✨ Generated data input type for table 'User'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input User_Data {
+  """
+  ✨ Generated from Field `User`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `User`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr
+  """
+  ✨ Generated from Field `User`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `createdAt` (✨ Generated from Field `User`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_expr: Timestamp_Expr
+  """
+  ✨ `_time` server value variant of `createdAt` (✨ Generated from Field `User`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_time: Timestamp_Relative
+  """
+  ✨ `_update` server value variant of `createdAt` (✨ Generated from Field `User`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_update: [Timestamp_Update!]
+  """
+  ✨ Generated from Field `User`.`displayName` of type `String!`
+  """
+  displayName: String
+  """
+  ✨ `_expr` server value variant of `displayName` (✨ Generated from Field `User`.`displayName` of type `String!`)
+  """
+  displayName_expr: String_Expr
+  """
+  ✨ Generated from Field `User`.`email` of type `String!`
+  """
+  email: String
+  """
+  ✨ `_expr` server value variant of `email` (✨ Generated from Field `User`.`email` of type `String!`)
+  """
+  email_expr: String_Expr
+  """
+  ✨ Generated from Field `User`.`phoneNumber` of type `String`
+  """
+  phoneNumber: String
+  """
+  ✨ `_expr` server value variant of `phoneNumber` (✨ Generated from Field `User`.`phoneNumber` of type `String`)
+  """
+  phoneNumber_expr: String_Expr
+  """
+  ✨ Generated from Field `User`.`photoUrl` of type `String`
+  """
+  photoUrl: String
+  """
+  ✨ `_expr` server value variant of `photoUrl` (✨ Generated from Field `User`.`photoUrl` of type `String`)
+  """
+  photoUrl_expr: String_Expr
+  """
+  ✨ Generated from Field `User`.`role` of type `String!`
+  """
+  role: String
+  """
+  ✨ `_expr` server value variant of `role` (✨ Generated from Field `User`.`role` of type `String!`)
+  """
+  role_expr: String_Expr
+}
+"""
+✨ Generated filter input type for table 'User'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input User_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [User_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: User_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [User_Filter!]
+  """
+  ✨ Generated from Field `User`.`id` of type `UUID!`
+  """
+  id: UUID_Filter
+  """
+  ✨ Generated from Field `User`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp_Filter
+  """
+  ✨ Generated from Field `User`.`displayName` of type `String!`
+  """
+  displayName: String_Filter
+  """
+  ✨ Generated from Field `User`.`email` of type `String!`
+  """
+  email: String_Filter
+  """
+  ✨ Generated from Field `User`.`phoneNumber` of type `String`
+  """
+  phoneNumber: String_Filter
+  """
+  ✨ Generated from Field `User`.`photoUrl` of type `String`
+  """
+  photoUrl: String_Filter
+  """
+  ✨ Generated from Field `User`.`role` of type `String!`
+  """
+  role: String_Filter
+  """
+  ✨ Generated from Field `User`.`comments_on_author` of type `[Comment!]!`
+  """
+  comments_on_author: Comment_ListFilter
+  """
+  ✨ Generated from Field `User`.`incidents_on_assignee` of type `[Incident!]!`
+  """
+  incidents_on_assignee: Incident_ListFilter
+  """
+  ✨ Generated from Field `User`.`incidents_on_reporter` of type `[Incident!]!`
+  """
+  incidents_on_reporter: Incident_ListFilter
+  """
+  ✨ Generated from Field `User`.`notifications_on_recipient` of type `[Notification!]!`
+  """
+  notifications_on_recipient: Notification_ListFilter
+  """
+  ✨ Generated from Field `User`.`statusUpdates_on_updater` of type `[StatusUpdate!]!`
+  """
+  statusUpdates_on_updater: StatusUpdate_ListFilter
+}
+"""
+✨ Generated first-row input type for table 'User'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input User_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [User_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: User_Filter
+}
+"""
+✨ Generated having input type for table 'User'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input User_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [User_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: User_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [User_Having!]
+  """
+  ✨ Generated from Field `User`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`displayName_count` of type `Int!`
+  """
+  displayName_count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`email_count` of type `Int!`
+  """
+  email_count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`id_count` of type `Int!`
+  """
+  id_count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`phoneNumber_count` of type `Int!`
+  """
+  phoneNumber_count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`photoUrl_count` of type `Int!`
+  """
+  photoUrl_count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`role_count` of type `Int!`
+  """
+  role_count: Int_Filter
+  """
+  ✨ Generated from Field `User`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `User`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: Timestamp_Filter
+}
+"""
+✨ Generated key input type for table 'User'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input User_Key {
+  """
+  ✨ Generated from Field `User`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `User`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr
+}
+"""
+✨ Generated list filter input type for table 'User'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input User_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: User_Filter
+}
+"""
+✨ Generated order input type for table 'User'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input User_Order {
+  """
+  ✨ Generated from Field `User`.`id` of type `UUID!`
+  """
+  id: OrderDirection
+  """
+  ✨ Generated from Field `User`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: OrderDirection
+  """
+  ✨ Generated from Field `User`.`displayName` of type `String!`
+  """
+  displayName: OrderDirection
+  """
+  ✨ Generated from Field `User`.`email` of type `String!`
+  """
+  email: OrderDirection
+  """
+  ✨ Generated from Field `User`.`phoneNumber` of type `String`
+  """
+  phoneNumber: OrderDirection
+  """
+  ✨ Generated from Field `User`.`photoUrl` of type `String`
+  """
+  photoUrl: OrderDirection
+  """
+  ✨ Generated from Field `User`.`role` of type `String!`
+  """
+  role: OrderDirection
+  """
+  ✨ Generated from Field `User`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`displayName_count` of type `Int!`
+  """
+  displayName_count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`email_count` of type `Int!`
+  """
+  email_count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`id_count` of type `Int!`
+  """
+  id_count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`phoneNumber_count` of type `Int!`
+  """
+  phoneNumber_count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`photoUrl_count` of type `Int!`
+  """
+  photoUrl_count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`role_count` of type `Int!`
+  """
+  role_count: OrderDirection
+  """
+  ✨ Generated from Field `User`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: OrderDirection
+  """
+  ✨ Generated from Field `User`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: OrderDirection
+}

@@ -1,6 +1,48 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, AlertTriangle, MapPin, Phone, FileText, Send, CheckCircle } from 'lucide-react';
 import { useIncidents } from '../context/IncidentsContext';
+import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+// Ensure you have this file or remove the import if not
+import '../styles/leaflet.css'; 
+
+// Fix for default marker icons in Leaflet
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
+
+const LocationPicker = ({ onLocationSelect, selectedLocation }) => {
+  const map = useMapEvents({
+    click(e) {
+      onLocationSelect(e.latlng);
+    },
+  });
+
+  // Center map on selected location when it changes
+  useEffect(() => {
+    if (selectedLocation) {
+      map.flyTo(selectedLocation, map.getZoom());
+    }
+  }, [selectedLocation, map]);
+
+  return selectedLocation ? (
+    <Marker
+      position={[selectedLocation.lat, selectedLocation.lng]}
+      draggable={true}
+      eventHandlers={{
+        dragend: (e) => {
+          const marker = e.target;
+          const position = marker.getLatLng();
+          onLocationSelect(position);
+        },
+      }}
+    />
+  ) : null;
+};
 
 const ReportIncidentForm = () => {
   const { reportPublicIncident, loading } = useIncidents();
@@ -10,12 +52,16 @@ const ReportIncidentForm = () => {
     location: '',
     description: '',
     phone: '',
-    severity: 'medium'
+    severity: 'medium',
+    coordinates: null // <-- ADDED: To store map coordinates
   });
 
   const [submitted, setSubmitted] = useState(false);
   const [trackingId, setTrackingId] = useState(null);
   const [error, setError] = useState('');
+  
+  // State for default map center (Peshawar)
+  const [mapCenter, setMapCenter] = useState([34.0151, 71.5249]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -30,8 +76,9 @@ const ReportIncidentForm = () => {
         description: formData.description,
         phone: formData.phone,
         severity: formData.severity,
-        lat: 34.0151 + (Math.random() - 0.5) * 0.01, // Default to Peshawar area
-        lng: 71.5249 + (Math.random() - 0.5) * 0.01,
+        // FIXED: Use coordinates from state or default if not set
+        lat: formData.coordinates ? formData.coordinates.lat : mapCenter[0], 
+        lng: formData.coordinates ? formData.coordinates.lng : mapCenter[1],
       };
 
       const response = await reportPublicIncident(incidentData);
@@ -45,7 +92,8 @@ const ReportIncidentForm = () => {
         location: '',
         description: '',
         phone: '',
-        severity: 'medium'
+        severity: 'medium',
+        coordinates: null // <-- Reset coordinates
       });
     } catch (err) {
       console.error('Error submitting incident:', err);
@@ -96,6 +144,7 @@ const ReportIncidentForm = () => {
           )}
           
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* ... (form fields for title, type, severity) ... */}
             <div>
               <label className="flex items-center gap-2 font-semibold text-slate-900 mb-2">
                 <FileText className="w-5 h-5 text-blue-600" />
@@ -153,17 +202,46 @@ const ReportIncidentForm = () => {
                 <MapPin className="w-5 h-5 text-blue-600" />
                 Location *
               </label>
-              <input 
-                type="text" 
-                value={formData.location}
-                onChange={(e) => setFormData({...formData, location: e.target.value})}
-                required
-                placeholder="Where did this incident occur?"
-                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" 
-              />
+              <div className="space-y-4">
+                <input 
+                  type="text" 
+                  value={formData.location}
+                  onChange={(e) => setFormData({...formData, location: e.target.value})}
+                  required
+                  placeholder="e.g., 'Outside Phase 3 Hayatabad', 'University Town'"
+                  className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200" 
+                />
+                
+                <div className="map-container border border-slate-300">
+                  <MapContainer
+                    center={mapCenter} // Use state for center
+                    zoom={13}
+                    className="h-full w-full"
+                  >
+                    <TileLayer
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    />
+                    <LocationPicker
+                      onLocationSelect={(latlng) => {
+                        // FIXED: Update form state with coordinates
+                        setFormData(prev => ({
+                          ...prev,
+                          coordinates: { lat: latlng.lat, lng: latlng.lng }
+                        }));
+                      }}
+                      selectedLocation={formData.coordinates} // FIXED: Pass state
+                    />
+                  </MapContainer>
+                </div>
+                <p className="text-sm text-slate-600">
+                  Click on the map to set the incident location or drag the marker to adjust.
+                </p>
+              </div>
             </div>
 
-            <div>
+            {/* ... (form fields for phone, description, and submit button) ... */}
+             <div>
               <label className="flex items-center gap-2 font-semibold text-slate-900 mb-2">
                 <Phone className="w-5 h-5 text-blue-600" />
                 Contact Phone *
@@ -214,6 +292,7 @@ const ReportIncidentForm = () => {
         </div>
       )}
 
+      {/* ... (Important Note section) ... */}
       <div className="bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-200 rounded-2xl p-6 card-hover">
         <div className="flex items-start gap-3">
           <AlertTriangle className="w-6 h-6 text-blue-600 flex-shrink-0 mt-0.5" />

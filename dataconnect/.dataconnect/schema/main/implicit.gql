@@ -1,0 +1,62 @@
+extend type Comment {
+  """
+  ✨ Implicit primary key field. It's a UUID column default to a generated new value. See `@table` for how to customize it.
+  """
+  id: UUID! @default(expr: "uuidV4()") @fdc_generated(from: "Comment", purpose: IMPLICIT_KEY_FIELD)
+  """
+  ✨ Implicit foreign key field based on `Comment`.`author`. It must match the value of `User`.`id`. See `@ref` for how to customize it.
+  """
+  authorId: UUID @fdc_generated(from: "Comment.author", purpose: IMPLICIT_REF_FIELD)
+  """
+  ✨ Implicit foreign key field based on `Comment`.`incident`. It must match the value of `Incident`.`id`. See `@ref` for how to customize it.
+  """
+  incidentId: UUID @fdc_generated(from: "Comment.incident", purpose: IMPLICIT_REF_FIELD)
+}
+extend type Incident {
+  """
+  ✨ Implicit primary key field. It's a UUID column default to a generated new value. See `@table` for how to customize it.
+  """
+  id: UUID! @default(expr: "uuidV4()") @fdc_generated(from: "Incident", purpose: IMPLICIT_KEY_FIELD)
+  """
+  ✨ Implicit foreign key field based on `Incident`.`assignee`. It must match the value of `User`.`id`. See `@ref` for how to customize it.
+  """
+  assigneeId: UUID @fdc_generated(from: "Incident.assignee", purpose: IMPLICIT_REF_FIELD)
+  """
+  ✨ Implicit foreign key field based on `Incident`.`reporter`. It must match the value of `User`.`id`. See `@ref` for how to customize it.
+  """
+  reporterId: UUID @fdc_generated(from: "Incident.reporter", purpose: IMPLICIT_REF_FIELD)
+}
+extend type Notification {
+  """
+  ✨ Implicit primary key field. It's a UUID column default to a generated new value. See `@table` for how to customize it.
+  """
+  id: UUID! @default(expr: "uuidV4()") @fdc_generated(from: "Notification", purpose: IMPLICIT_KEY_FIELD)
+  """
+  ✨ Implicit foreign key field based on `Notification`.`incident`. It must match the value of `Incident`.`id`. See `@ref` for how to customize it.
+  """
+  incidentId: UUID @fdc_generated(from: "Notification.incident", purpose: IMPLICIT_REF_FIELD)
+  """
+  ✨ Implicit foreign key field based on `Notification`.`recipient`. It must match the value of `User`.`id`. See `@ref` for how to customize it.
+  """
+  recipientId: UUID @fdc_generated(from: "Notification.recipient", purpose: IMPLICIT_REF_FIELD)
+}
+extend type StatusUpdate {
+  """
+  ✨ Implicit primary key field. It's a UUID column default to a generated new value. See `@table` for how to customize it.
+  """
+  id: UUID! @default(expr: "uuidV4()") @fdc_generated(from: "StatusUpdate", purpose: IMPLICIT_KEY_FIELD)
+  """
+  ✨ Implicit foreign key field based on `StatusUpdate`.`incident`. It must match the value of `Incident`.`id`. See `@ref` for how to customize it.
+  """
+  incidentId: UUID @fdc_generated(from: "StatusUpdate.incident", purpose: IMPLICIT_REF_FIELD)
+  """
+  ✨ Implicit foreign key field based on `StatusUpdate`.`updater`. It must match the value of `User`.`id`. See `@ref` for how to customize it.
+  """
+  updaterId: UUID @fdc_generated(from: "StatusUpdate.updater", purpose: IMPLICIT_REF_FIELD)
+}
+extend type User {
+  """
+  ✨ Implicit primary key field. It's a UUID column default to a generated new value. See `@table` for how to customize it.
+  """
+  id: UUID! @default(expr: "uuidV4()") @fdc_generated(from: "User", purpose: IMPLICIT_KEY_FIELD)
+}

@@ -1,0 +1,45 @@
+type User @table {
+  email: String!
+  displayName: String!
+  createdAt: Timestamp!
+  role: String!
+  photoUrl: String
+  phoneNumber: String
+}
+
+type Incident @table {
+  title: String!
+  description: String!
+  createdAt: Timestamp!
+  status: String!
+  reporter: User
+  assignee: User
+  severity: String
+  category: String
+}
+
+type Comment @table {
+  content: String!
+  createdAt: Timestamp!
+  author: User
+  incident: Incident
+  isInternal: Boolean
+}
+
+type StatusUpdate @table {
+  oldStatus: String!
+  newStatus: String!
+  createdAt: Timestamp!
+  updater: User
+  incident: Incident
+  notes: String
+}
+
+type Notification @table {
+  message: String!
+  createdAt: Timestamp!
+  isRead: Boolean!
+  recipient: User
+  incident: Incident
+  type: String
+}

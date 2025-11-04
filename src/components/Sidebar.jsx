@@ -1,7 +1,9 @@
 import React from 'react';
 import { Shield, AlertTriangle, FileText, Settings, MapPin, TrendingUp, Plus, Eye, Users, X } from 'lucide-react';
+import { useAuth } from '../context/AuthContext'; // Import useAuth
 
 const Sidebar = ({ sidebarOpen, setSidebarOpen, currentPage, setCurrentPage, userRole, viewerIncidentId, isMobile }) => {
+  const { user } = useAuth(); // Get user info
 
   const menuItems = userRole !== 'viewer' ? [
     { id: 'dashboard', label: 'Dashboard', icon: TrendingUp },
@@ -9,8 +11,8 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen, currentPage, setCurrentPage, use
     { id: 'map', label: 'Live Map', icon: MapPin },
     { id: 'reports', label: 'Reports', icon: FileText },
   ] : [
-    { id: 'report-incident', label: 'Report Incident', icon: Plus },
-    ...(viewerIncidentId ? [{ id: 'track-incident', label: 'Track My Report', icon: Eye }] : [])
+    // These items are for public roles, which are no longer in this layout
+    // Kept for reference, but admin/officer roles are default
   ];
 
   if (userRole === 'admin') {
@@ -29,12 +31,10 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen, currentPage, setCurrentPage, use
 
       {/* Sidebar */}
       <aside
-        className={`fixed left-0 top-0 h-full bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 text-white transition-all duration-300 z-50 ${
+        className={`fixed left-0 top-0 h-full bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 text-white transition-transform duration-300 z-50 ${
           sidebarOpen 
             ? 'w-64 translate-x-0' 
-            : isMobile 
-              ? '-translate-x-full' 
-              : 'w-0 -translate-x-full'
+            : 'w-64 -translate-x-full'
         } overflow-hidden shadow-2xl`}
       >
         <div className="p-4 sm:p-6 h-full flex flex-col">
@@ -68,8 +68,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen, currentPage, setCurrentPage, use
                 <button
                   key={item.id}
                   onClick={() => {
-                    setCurrentPage(item.id);
-                    if (isMobile) setSidebarOpen(false);
+                    setCurrentPage(item.id); // This now calls the function from MainLayout
                   }}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
                     isActive
@@ -107,14 +106,10 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen, currentPage, setCurrentPage, use
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold capitalize text-sm truncate">
-                    {userRole || 'Guest'}
+                    {user?.displayName || userRole || 'Guest'}
                   </p>
                   <p className="text-xs text-slate-400 truncate">
-                    {userRole === 'admin' 
-                      ? 'Administrator' 
-                      : userRole === 'officer' 
-                        ? 'Security Officer' 
-                        : 'Public User'}
+                    {user?.email}
                   </p>
                 </div>
               </div>

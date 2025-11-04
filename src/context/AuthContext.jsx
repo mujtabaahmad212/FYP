@@ -1,5 +1,17 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { authAPI } from '../utils/api';
+import { auth, db } from '../utils/firebase';
+import {
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+  signInAnonymously,
+  GoogleAuthProvider,
+  signInWithPopup,
+  RecaptchaVerifier,
+  signInWithPhoneNumber
+} from 'firebase/auth';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 
 const AuthContext = createContext();
 
@@ -13,132 +25,133 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [originalRole, setOriginalRole] = useState(null); // For role switching
 
-  // Safely load user from localStorage
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem('user');
-      if (stored) {
-        try {
-          const userData = JSON.parse(stored);
-          setUser(userData);
-          setIsAuthenticated(true);
-          
-          // Verify token with backend if available
-          if (userData.token && userData.token.startsWith('real_')) {
-            authAPI.verifyToken().catch(() => {
-              // Token invalid, logout
-              setUser(null);
-              setIsAuthenticated(false);
-              localStorage.removeItem('user');
-            });
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        if (firebaseUser.isAnonymous) {
+          const guestUser = { ...firebaseUser, role: 'guest', displayName: 'Guest User' };
+          setUser(guestUser);
+          setOriginalRole('guest');
+        } else {
+          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+          if (userDoc.exists()) {
+            const userData = { ...firebaseUser, ...userDoc.data() };
+            setUser(userData);
+            if (!originalRole) { // Only set originalRole once on login
+              setOriginalRole(userData.role);
+            }
+          } else {
+            // If user exists in auth but not in firestore, create a doc
+            const newUser = {
+              email: firebaseUser.email,
+              role: 'viewer', // Default role for new signups
+              displayName: firebaseUser.displayName || firebaseUser.email.split('@')[0],
+              photoURL: firebaseUser.photoURL,
+              createdAt: new Date()
+            };
+            await setDoc(doc(db, 'users', firebaseUser.uid), newUser, { merge: true });
+            setUser({ ...firebaseUser, ...newUser });
+            if (!originalRole) {
+              setOriginalRole(newUser.role);
+            }
           }
-        } catch (parseError) {
-          console.error('Error parsing user data:', parseError);
-          localStorage.removeItem('user');
         }
+      } else {
+        setUser(null);
+        setOriginalRole(null);
       }
-    } catch (error) {
-      console.error('Error accessing localStorage:', error);
-    } finally {
       setIsLoading(false);
-    }
-  }, []);
+    });
 
-  const login = async (email, password, role) => {
+    return () => unsubscribe();
+  }, [originalRole]); // Added originalRole as dependency
+
+  const login = (email, password) => {
+    // Reset originalRole on login
+    setOriginalRole(null); 
+    return signInWithEmailAndPassword(auth, email, password);
+  };
+
+  const signup = async (email, password, role = 'viewer') => { // Default to viewer
+    setOriginalRole(null);
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const { user } = userCredential;
+    const newUser = {
+      email: user.email,
+      role: role,
+      displayName: user.email.split('@')[0],
+      createdAt: new Date()
+    };
+    await setDoc(doc(db, 'users', user.uid), newUser);
+    setUser({ ...user, ...newUser });
+    setOriginalRole(role);
+    return userCredential;
+  };
+
+  const loginAsGuest = async () => {
+    setOriginalRole(null);
+    const userCredential = await signInAnonymously(auth);
+    const guestUser = { ...userCredential.user, role: 'guest', displayName: 'Guest User' };
+    setUser(guestUser);
+    setOriginalRole('guest');
+    return userCredential;
+  };
+
+  const loginWithGoogle = async () => {
+    setOriginalRole(null);
+    const provider = new GoogleAuthProvider();
     try {
-      setIsLoading(true);
-      
-      // Try backend login first
-      const response = await authAPI.login({ email, password, role });
-      
-      const userData = {
-        id: response.user?.id || Date.now(),
-        email: response.user?.email || email,
-        role: response.user?.role || role,
-        name: response.user?.name || email.split('@')[0],
-        token: response.token || `mock_token_${Date.now()}`,
-      };
-      
-      setUser(userData);
-      setIsAuthenticated(true);
-      localStorage.setItem('user', JSON.stringify(userData));
-      return true;
+      await signInWithPopup(auth, provider);
+      // The onAuthStateChanged listener will handle the user creation/update
     } catch (error) {
-      console.error('Login failed:', error);
-      // Fallback to mock login for development
-      const userData = { 
-        id: Date.now(), 
-        email, 
-        role, 
-        name: email.split('@')[0],
-        token: `mock_token_${Date.now()}`,
-      };
-      setUser(userData);
-      setIsAuthenticated(true);
-      localStorage.setItem('user', JSON.stringify(userData));
-      return true;
-    } finally {
-      setIsLoading(false);
+      console.error("Error during Google login:", error);
+      throw error;
     }
+  };
+
+  const loginWithPhone = (phoneNumber, recaptchaVerifier) => {
+    setOriginalRole(null);
+    return signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifier);
   };
 
   const logout = () => {
-    try {
-      // Try backend logout
-      authAPI.logout().catch(() => {
-        // Backend not available, just clear local state
-      });
-      
-      setUser(null);
-      setIsAuthenticated(false);
-      localStorage.removeItem('user');
-      localStorage.removeItem('viewerIncidentId');
-    } catch (error) {
-      console.error('Logout failed:', error);
-      setUser(null);
-      setIsAuthenticated(false);
-      localStorage.removeItem('user');
-      localStorage.removeItem('viewerIncidentId');
+    return signOut(auth);
+  };
+
+  // ADDED: Function for RoleSwitcher
+  const switchRole = (newRole) => {
+    if (user && originalRole === 'admin') {
+      setUser(prevUser => ({ ...prevUser, role: newRole }));
+    } else {
+      console.warn('Only admins can switch roles.');
     }
   };
 
-  // Permission system based on roles
-  const hasPermission = (action) => {
-    if (!user) return false;
-    
-    const permissions = {
-      admin: ['create', 'edit', 'delete', 'view', 'settings', 'export'],
-      officer: ['create', 'edit', 'view'],
-      viewer: ['view']
-    };
-
-    return permissions[user.role]?.includes(action) || false;
+  // ADDED: Function for RoleSwitcher
+  const resetRole = () => {
+    if (user && originalRole) {
+      setUser(prevUser => ({ ...prevUser, role: originalRole }));
+    }
   };
 
   const value = {
     user,
-    userRole: user?.role,
-    isAuthenticated,
+    isAuthenticated: !!user,
+    userRole: user?.role, // <-- Added this for convenience
     isLoading,
     login,
+    signup,
+    loginAsGuest,
     logout,
-    hasPermission
+    originalRole,
+    loginWithGoogle,
+    loginWithPhone,
+    switchRole, // <-- ADDED
+    resetRole,  // <-- ADDED
   };
-
-  // Show loading while checking auth state
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="spinner w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4 animate-spin"></div>
-          <p className="text-slate-600">Initializing...</p>
-        </div>
-      </div>
-    );
-  }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

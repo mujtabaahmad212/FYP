@@ -1,0 +1,48 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    function isOfficer() {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'officer';
+    }
+    
+    function isViewer() {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'viewer';
+    }
+    
+    // Incidents collection
+    match /incidents/{incidentId} {
+      // Anyone authenticated can read incidents
+      allow read: if isAuthenticated();
+      
+      // Viewers can create incidents
+      allow create: if isViewer() || !isAuthenticated();
+      
+      // Only admins and officers can update
+      allow update: if isAdmin() || isOfficer();
+      
+      // Only admins can delete
+      allow delete: if isAdmin();
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if !isAuthenticated();
+      allow update: if isAuthenticated() && request.auth.uid == userId;
+      allow delete: if isAdmin();
+    }
+  }
+}
