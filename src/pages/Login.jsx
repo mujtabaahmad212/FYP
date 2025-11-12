@@ -4,10 +4,9 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Shield, Mail, Lock, AlertCircle, Loader, Eye, EyeOff } from 'lucide-react';
 
 const Login = () => {
-  const { login, signup, loginAsGuest, loginWithGoogle } = useAuth();
+  const { login, loginAsGuest, loginWithGoogle } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [mode, setMode] = useState('login'); // "login" or "signup"
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPwd, setShowPwd] = useState(false);
@@ -18,7 +17,7 @@ const Login = () => {
   const location = useLocation();
   const from = location.state?.from?.pathname || '/dashboard';
 
-  // Optional: implement forgot password with Firebase
+  // Forgot password handler
   const handleForgotPassword = async (e) => {
     e.preventDefault();
     setError('');
@@ -37,39 +36,17 @@ const Login = () => {
     }
   };
 
-  // Login or signup handler
+  // Only admin/officer login, no signup
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
     try {
-      if (mode === 'signup') {
-        await signup(email, password);
-        setMode('login');
-        setError("Sign up successful! You can log in now.");
-        setEmail('');
-        setPassword('');
-        setLoading(false);
-        return;
-      } else {
-        await login(email, password);
-        navigate(from, { replace: true });
-      }
+      await login(email, password);
+      navigate(from, { replace: true });
     } catch (err) {
-      if (err.code === 'auth/email-already-in-use') {
-        setError('Email already exists. Please log in instead.');
-      } else if (err.code === 'auth/user-not-found') {
-        setError('No account found. Please sign up first.');
-      } else if (err.code === 'auth/wrong-password') {
-        setError('Incorrect password. Please try again.');
-      } else if (err.code === 'auth/invalid-email') {
-        setError('Invalid email address format.');
-      } else if (err.code === 'auth/too-many-requests') {
-        setError('Too many failed attempts. Please try again later.');
-      } else {
-        setError(err.message || 'Auth failed. Please try again.');
-      }
+      setError(err.message || 'Login failed. Only admin/officer accounts can login.');
     } finally {
       setLoading(false);
     }
@@ -95,7 +72,7 @@ const Login = () => {
       await loginWithGoogle();
       navigate(from, { replace: true });
     } catch (err) {
-      setError('Google login failed. Please try again.');
+      setError(err.message || 'Google login failed. Only admin/officer accounts can login.');
     } finally {
       setLoading(false);
     }
@@ -117,10 +94,12 @@ const Login = () => {
 
         {/* Card */}
         <div className="bg-white rounded-2xl p-8 shadow-xl border border-slate-200">
-          <h2 className="text-2xl font-bold mb-2">{mode === 'login' ? "Welcome back" : "Sign Up"}</h2>
-          <p className="text-slate-600 mb-6">{mode === 'login' ? "Sign in to continue to your dashboard" : "Create an account to get started"}</p>
+          <h2 className="text-2xl font-bold mb-2">Admin/Officer Login</h2>
+          <p className="text-slate-600 mb-6">
+            Only approved accounts can access the dashboard.
+          </p>
 
-          {/* Error Message */}
+          {/* Error or success messages */}
           {error && (
             <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
@@ -133,7 +112,7 @@ const Login = () => {
             </div>
           )}
 
-          {/* Login/Signup Form */}
+          {/* Login Form */}
           <form onSubmit={handleSubmit} className="space-y-4" autoComplete="on">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Email Address</label>
@@ -158,9 +137,9 @@ const Login = () => {
                 <input
                   type={showPwd ? "text" : "password"}
                   value={password}
-                  autoComplete={mode === 'signup' ? "new-password" : "current-password"}
+                  autoComplete="current-password"
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder={mode === 'signup' ? "Choose a strong password" : "Enter your password"}
+                  placeholder="Enter your password"
                   required
                   className="w-full pl-11 pr-12 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500"
                 />
@@ -181,62 +160,26 @@ const Login = () => {
               {loading ? (
                 <>
                   <Loader className="w-5 h-5 animate-spin" />
-                  {mode === "login" ? "Signing in..." : "Signing up..."}
+                  Signing in...
                 </>
-              ) : mode === "login" ? "Sign In" : "Sign Up"}
+              ) : "Sign In"}
             </button>
           </form>
 
           {/* Forgot/Reset Password Flow */}
-          {mode === "login" && (
-            <div className="mt-2 text-right">
-              <button
-                onClick={() => setMode("reset")}
-                className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-              >Forgot password?</button>
-            </div>
-          )}
-
-          {/* Sign up prompt/login switch */}
-          <div className="mt-6 text-center text-sm">
-            {mode === "login" && (
-              <>
-                Don't have an account?
-                <button
-                  className="ml-1 text-blue-600 hover:text-blue-700 font-medium"
-                  onClick={() => { setMode("signup"); setError(""); }}
-                >
-                  Sign Up
-                </button>
-              </>
-            )}
-            {mode === "signup" && (
-              <>
-                Already have an account?
-                <button
-                  className="ml-1 text-blue-600 hover:text-blue-700 font-medium"
-                  onClick={() => { setMode("login"); setError(""); }}
-                >
-                  Login
-                </button>
-              </>
-            )}
-            {mode === "reset" && (
-              <button
-                className="text-blue-600 hover:text-blue-700 font-medium ml-1"
-                onClick={() => { setMode("login"); setError(""); setResetSent(false); }}
-              >
-                Back to Login
-              </button>
-            )}
+          <div className="mt-2 text-right">
+            <button
+              onClick={() => setResetSent(false)}
+              className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+            >Forgot password?</button>
           </div>
 
           {/* Reset password form */}
-          {mode === "reset" && (
+          {resetSent && (
             <form onSubmit={handleForgotPassword} className="space-y-3 mt-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Enter email for password reset
+                  Enter your email to reset password
                 </label>
                 <input
                   type="email"
@@ -274,7 +217,6 @@ const Login = () => {
               disabled={loading}
               className="w-full py-3 border-2 border-slate-300 rounded-xl font-semibold hover:bg-slate-50 transition disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              {/* ...Google SVG... */}
               Sign in with Google
             </button>
 
@@ -306,11 +248,10 @@ const Login = () => {
 
         {/* Demo Credentials */}
         <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-          <p className="text-sm font-semibold text-blue-900 mb-2">Demo Credentials:</p>
+          <p className="text-sm font-semibold text-blue-900 mb-2">Demo Login:</p>
           <div className="text-xs text-blue-800 space-y-1">
             <p><strong>Admin:</strong> admin@securewatch.com / admin123</p>
             <p><strong>Officer:</strong> officer@securewatch.com / officer123</p>
-            <p><strong>Viewer:</strong> viewer@securewatch.com / viewer123</p>
           </div>
         </div>
       </div>

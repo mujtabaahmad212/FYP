@@ -2,13 +2,11 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { auth, db } from '../utils/firebase';
 import {
   signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signInAnonymously,
   signOut,
   onAuthStateChanged,
   GoogleAuthProvider,
   signInWithPopup,
-  signInWithPhoneNumber
+  signInAnonymously,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 
@@ -20,33 +18,35 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Listen to auth state and pull user role from Firestore
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async firebaseUser => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        // If phone or google login, may need to create the user profile
-        let role = 'viewer';
-        let displayName = firebaseUser.displayName || (firebaseUser.email ? firebaseUser.email.split('@')[0] : 'User');
+        let role = null;
+        let email = firebaseUser.email || '';
+        let displayName =
+          firebaseUser.displayName || email?.split('@')[0] || 'User';
+
         try {
           const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
           if (userDoc.exists()) {
             const data = userDoc.data();
-            role = data.role || role;
+            role = data.role || null;
             displayName = data.displayName || displayName;
-          } else {
-            // First time user, create profile
-            await setDoc(doc(db, 'users', firebaseUser.uid), {
-              email: firebaseUser.email || '',
-              displayName,
-              role: role,
-              createdAt: new Date().toISOString(),
-            });
           }
-        } catch (e) {
-          // Ignore if profile fetch fails
+        } catch (e) {}
+
+        // If role not found or not admin/officer, sign out immediately
+        if (!role || (role !== 'admin' && role !== 'officer')) {
+          await signOut(auth);
+          setUser(null);
+          setIsLoading(false);
+          return;
         }
+
         setUser({
           uid: firebaseUser.uid,
-          email: firebaseUser.email || '',
+          email,
           displayName,
           role,
           isAnonymous: firebaseUser.isAnonymous || false,
@@ -56,14 +56,23 @@ export const AuthProvider = ({ children }) => {
       }
       setIsLoading(false);
     });
+
     return () => unsubscribe();
   }, []);
 
-  // Direct Firebase login/signup
+  // Only admin/officer can login now
   const login = async (email, password) => {
     setIsLoading(true);
     try {
       const credential = await signInWithEmailAndPassword(auth, email, password);
+      const firebaseUser = credential.user;
+      // Fetch Firestore role
+      const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+      if (!userDoc.exists() || !['admin', 'officer'].includes(userDoc.data().role)) {
+        await signOut(auth);
+        setIsLoading(false);
+        throw new Error('Not authorized! Only admin and officer can login.');
+      }
       setIsLoading(false);
       return credential;
     } catch (e) {
@@ -72,29 +81,24 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const signup = async (email, password, role = 'viewer') => {
-    setIsLoading(true);
-    try {
-      const credential = await createUserWithEmailAndPassword(auth, email, password);
-      await setDoc(doc(db, 'users', credential.user.uid), {
-        email,
-        displayName: email.split('@')[0],
-        role,
-        createdAt: new Date().toISOString(),
-      });
-      setIsLoading(false);
-      return credential;
-    } catch (e) {
-      setIsLoading(false);
-      throw e;
-    }
+  // Disable signup for new users
+  const signup = async () => {
+    throw new Error('Sign up is not allowed. Contact the administrator.');
   };
 
+  // Google login (block unless user role set)
   const loginWithGoogle = async () => {
     setIsLoading(true);
-    const provider = new GoogleAuthProvider();
     try {
+      const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
+      const firebaseUser = result.user;
+      const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+      if (!userDoc.exists() || !['admin', 'officer'].includes(userDoc.data().role)) {
+        await signOut(auth);
+        setIsLoading(false);
+        throw new Error('Not authorized! Only admin and officer can login.');
+      }
       setIsLoading(false);
       return result;
     } catch (e) {
@@ -103,19 +107,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Example only—show phone login with recaptchaVerifier
-  const loginWithPhone = async (phoneNumber, recaptchaVerifier) => {
-    setIsLoading(true);
-    try {
-      const result = await signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifier);
-      setIsLoading(false);
-      return result;
-    } catch (e) {
-      setIsLoading(false);
-      throw e;
-    }
-  };
-
+  // Guest login (OPTIONAL, leave if you want guest/anonymous support)
   const loginAsGuest = async () => {
     setIsLoading(true);
     try {
@@ -144,7 +136,6 @@ export const AuthProvider = ({ children }) => {
         signup,
         loginAsGuest,
         loginWithGoogle,
-        loginWithPhone,
         logout,
       }}
     >
