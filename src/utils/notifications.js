@@ -1,5 +1,4 @@
 import emailjs from '@emailjs/browser';
-
 import { ErrorTypes, AppError } from './errorHandler';
 
 export const sendEmailNotification = async (incident) => {
@@ -7,7 +6,7 @@ export const sendEmailNotification = async (incident) => {
     if (!incident || !incident.id) {
       throw new AppError(ErrorTypes.VALIDATION, 'Invalid incident data');
     }
-    
+
     const templateParams = {
       to_email: import.meta.env.VITE_ADMIN_EMAIL,
       incident_id: incident.id,
@@ -18,6 +17,12 @@ export const sendEmailNotification = async (incident) => {
       report_time: new Date().toLocaleString()
     };
 
+    // Skip actual send if config missing (dev fallback)
+    if (!import.meta.env.VITE_EMAILJS_SERVICE_ID || !import.meta.env.VITE_EMAILJS_TEMPLATE_ID || !import.meta.env.VITE_EMAILJS_PUBLIC_KEY) {
+      console.log('EmailJS config not found, skipping real send (dev fallback).', templateParams);
+      return { success: true, message: 'Email mocked (dev)' };
+    }
+
     await emailjs.send(
       import.meta.env.VITE_EMAILJS_SERVICE_ID,
       import.meta.env.VITE_EMAILJS_TEMPLATE_ID,
@@ -25,18 +30,10 @@ export const sendEmailNotification = async (incident) => {
       import.meta.env.VITE_EMAILJS_PUBLIC_KEY
     );
 
-    console.log('Email notification sent successfully');
-    return {
-      success: true,
-      message: 'Email notification sent successfully'
-    };
+    return { success: true, message: 'Email notification sent successfully' };
   } catch (error) {
-    console.error('Error sending email notification:', error);
-    throw new AppError(
-      ErrorTypes.NOTIFICATION,
-      'Failed to send email notification',
-      error
-    );
+    console.error('Error sending email:', error);
+    throw new AppError(ErrorTypes.NOTIFICATION, 'Failed to send email notification', error);
   }
 };
 
@@ -45,110 +42,76 @@ export const sendWhatsAppNotification = async (incident) => {
     if (!incident || !incident.id) {
       throw new AppError(ErrorTypes.VALIDATION, 'Invalid incident data');
     }
-    
-    // Using WhatsApp Business API
-    const message = `New Incident Reported\n
-ID: ${incident.id}\n
-Title: ${incident.title}\n
-Location: ${incident.location}\n
-Severity: ${incident.severity}\n
-Description: ${incident.description}\n
-Time: ${new Date().toLocaleString()}`;
 
-    // Replace with your WhatsApp API integration
-    const response = await fetch(import.meta.env.VITE_WHATSAPP_API_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${import.meta.env.VITE_WHATSAPP_API_TOKEN}`
-      },
-      body: JSON.stringify({
-        phone: import.meta.env.VITE_ADMIN_PHONE_NUMBER,
-        message: message
-      })
-    });
+    const message = `New Incident Reported\nID: ${incident.id}\nTitle: ${incident.title}\nLocation: ${incident.location}\nSeverity: ${incident.severity}\nDescription: ${incident.description}\nTime: ${new Date().toLocaleString()}`;
 
-    if (!response.ok) {
-      throw new Error('WhatsApp notification failed');
+    const endpoint = import.meta.env.VITE_WHATSAPP_API_ENDPOINT;
+    const token = import.meta.env.VITE_WHATSAPP_API_TOKEN;
+    const phone = import.meta.env.VITE_ADMIN_PHONE_NUMBER;
+
+    if (!endpoint || !token || !phone) {
+      console.log('WhatsApp API config missing - skipping real call (dev fallback).', { message, phone });
+      return { success: true, message: 'WhatsApp mocked (dev)' };
     }
 
-    console.log('WhatsApp notification sent successfully');
-    return {
-      success: true,
-      message: 'WhatsApp notification sent successfully'
-    };
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ phone, message })
+    });
+
+    if (!res.ok) throw new Error('WhatsApp notification failed');
+
+    return { success: true, message: 'WhatsApp notification sent successfully' };
   } catch (error) {
-    console.error('Error sending WhatsApp notification:', error);
-    throw new AppError(
-      ErrorTypes.NOTIFICATION,
-      'Failed to send WhatsApp notification',
-      error
-    );
+    console.error('WhatsApp error:', error);
+    throw new AppError(ErrorTypes.NOTIFICATION, 'Failed to send WhatsApp notification', error);
   }
 };
 
-// Combined notification sender
 export const sendNotifications = async (incident, settings) => {
-  const results = {
-    email: null,
-    whatsapp: null,
-    success: false,
-    message: 'No notifications sent based on current settings.'
-  };
+  const results = { email: null, whatsapp: null, success: false, message: 'No notifications sent' };
 
   if (!settings || !settings.notifications) {
-    console.warn('Notification settings not provided. Skipping notifications.');
+    console.warn('Notification settings not provided');
     return results;
   }
 
   const { emailAlerts, pushNotifications, highPriorityOnly } = settings.notifications;
 
-  // Check if notifications should be sent at all
   if (!emailAlerts && !pushNotifications) {
+    results.message = 'Notifications disabled in settings';
     return results;
   }
 
-  // Check for high priority setting
   const highPriorityIncidents = ['high', 'critical'];
-  if (highPriorityOnly && !highPriorityIncidents.includes(incident.severity?.toLowerCase())) {
-    results.message = 'Notification skipped: Incident is not high priority.';
+  if (highPriorityOnly && !highPriorityIncidents.includes((incident.severity || '').toLowerCase())) {
+    results.message = 'Skipped due to highPriorityOnly';
     return results;
   }
 
   try {
-    // Send email notification
     if (emailAlerts) {
       try {
         results.email = await sendEmailNotification(incident);
-      } catch (emailError) {
-        console.error('Email notification failed:', emailError);
-        results.email = { success: false, error: emailError.message };
+      } catch (e) {
+        results.email = { success: false, error: e.message };
       }
     }
 
-    // Send WhatsApp notification (assuming this is the "push notification")
     if (pushNotifications) {
       try {
         results.whatsapp = await sendWhatsAppNotification(incident);
-      } catch (whatsappError) {
-        console.error('WhatsApp notification failed:', whatsappError);
-        results.whatsapp = { success: false, error: whatsappError.message };
+      } catch (e) {
+        results.whatsapp = { success: false, error: e.message };
       }
     }
 
-    // Consider it successful if at least one notification was sent
-    results.success = results.email?.success || results.whatsapp?.success;
-    if (results.success) {
-        results.message = 'Notifications sent successfully.';
-    }
-
+    results.success = !!(results.email?.success || results.whatsapp?.success);
+    results.message = results.success ? 'Notifications sent' : 'No notifications were successful';
     return results;
   } catch (error) {
-    console.error('Error in sendNotifications:', error);
-    throw new AppError(
-      ErrorTypes.NOTIFICATION,
-      'Failed to send notifications',
-      error
-    );
+    console.error('sendNotifications error', error);
+    throw new AppError(ErrorTypes.NOTIFICATION, 'sendNotifications failed', error);
   }
 };

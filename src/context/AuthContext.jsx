@@ -1,157 +1,154 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { auth, db } from '../utils/firebase';
 import {
-  onAuthStateChanged,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  signOut,
   signInAnonymously,
+  signOut,
+  onAuthStateChanged,
   GoogleAuthProvider,
   signInWithPopup,
-  RecaptchaVerifier,
   signInWithPhoneNumber
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 
 const AuthContext = createContext();
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within AuthProvider');
-  }
-  return context;
-};
+export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [originalRole, setOriginalRole] = useState(null); // For role switching
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async firebaseUser => {
       if (firebaseUser) {
-        if (firebaseUser.isAnonymous) {
-          const guestUser = { ...firebaseUser, role: 'guest', displayName: 'Guest User' };
-          setUser(guestUser);
-          setOriginalRole('guest');
-        } else {
+        // If phone or google login, may need to create the user profile
+        let role = 'viewer';
+        let displayName = firebaseUser.displayName || (firebaseUser.email ? firebaseUser.email.split('@')[0] : 'User');
+        try {
           const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
           if (userDoc.exists()) {
-            const userData = { ...firebaseUser, ...userDoc.data() };
-            setUser(userData);
-            if (!originalRole) { // Only set originalRole once on login
-              setOriginalRole(userData.role);
-            }
+            const data = userDoc.data();
+            role = data.role || role;
+            displayName = data.displayName || displayName;
           } else {
-            // If user exists in auth but not in firestore, create a doc
-            const newUser = {
-              email: firebaseUser.email,
-              role: 'viewer', // Default role for new signups
-              displayName: firebaseUser.displayName || firebaseUser.email.split('@')[0],
-              photoURL: firebaseUser.photoURL,
-              createdAt: new Date()
-            };
-            await setDoc(doc(db, 'users', firebaseUser.uid), newUser, { merge: true });
-            setUser({ ...firebaseUser, ...newUser });
-            if (!originalRole) {
-              setOriginalRole(newUser.role);
-            }
+            // First time user, create profile
+            await setDoc(doc(db, 'users', firebaseUser.uid), {
+              email: firebaseUser.email || '',
+              displayName,
+              role: role,
+              createdAt: new Date().toISOString(),
+            });
           }
+        } catch (e) {
+          // Ignore if profile fetch fails
         }
+        setUser({
+          uid: firebaseUser.uid,
+          email: firebaseUser.email || '',
+          displayName,
+          role,
+          isAnonymous: firebaseUser.isAnonymous || false,
+        });
       } else {
         setUser(null);
-        setOriginalRole(null);
       }
       setIsLoading(false);
     });
-
     return () => unsubscribe();
-  }, [originalRole]); // Added originalRole as dependency
+  }, []);
 
-  const login = (email, password) => {
-    // Reset originalRole on login
-    setOriginalRole(null); 
-    return signInWithEmailAndPassword(auth, email, password);
+  // Direct Firebase login/signup
+  const login = async (email, password) => {
+    setIsLoading(true);
+    try {
+      const credential = await signInWithEmailAndPassword(auth, email, password);
+      setIsLoading(false);
+      return credential;
+    } catch (e) {
+      setIsLoading(false);
+      throw e;
+    }
   };
 
-  const signup = async (email, password, role = 'viewer') => { // Default to viewer
-    setOriginalRole(null);
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    const { user } = userCredential;
-    const newUser = {
-      email: user.email,
-      role: role,
-      displayName: user.email.split('@')[0],
-      createdAt: new Date()
-    };
-    await setDoc(doc(db, 'users', user.uid), newUser);
-    setUser({ ...user, ...newUser });
-    setOriginalRole(role);
-    return userCredential;
-  };
-
-  const loginAsGuest = async () => {
-    setOriginalRole(null);
-    const userCredential = await signInAnonymously(auth);
-    const guestUser = { ...userCredential.user, role: 'guest', displayName: 'Guest User' };
-    setUser(guestUser);
-    setOriginalRole('guest');
-    return userCredential;
+  const signup = async (email, password, role = 'viewer') => {
+    setIsLoading(true);
+    try {
+      const credential = await createUserWithEmailAndPassword(auth, email, password);
+      await setDoc(doc(db, 'users', credential.user.uid), {
+        email,
+        displayName: email.split('@')[0],
+        role,
+        createdAt: new Date().toISOString(),
+      });
+      setIsLoading(false);
+      return credential;
+    } catch (e) {
+      setIsLoading(false);
+      throw e;
+    }
   };
 
   const loginWithGoogle = async () => {
-    setOriginalRole(null);
+    setIsLoading(true);
     const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
-      // The onAuthStateChanged listener will handle the user creation/update
-    } catch (error) {
-      console.error("Error during Google login:", error);
-      throw error;
+      const result = await signInWithPopup(auth, provider);
+      setIsLoading(false);
+      return result;
+    } catch (e) {
+      setIsLoading(false);
+      throw e;
     }
   };
 
-  const loginWithPhone = (phoneNumber, recaptchaVerifier) => {
-    setOriginalRole(null);
-    return signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifier);
-  };
-
-  const logout = () => {
-    return signOut(auth);
-  };
-
-  // ADDED: Function for RoleSwitcher
-  const switchRole = (newRole) => {
-    if (user && originalRole === 'admin') {
-      setUser(prevUser => ({ ...prevUser, role: newRole }));
-    } else {
-      console.warn('Only admins can switch roles.');
+  // Example only—show phone login with recaptchaVerifier
+  const loginWithPhone = async (phoneNumber, recaptchaVerifier) => {
+    setIsLoading(true);
+    try {
+      const result = await signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifier);
+      setIsLoading(false);
+      return result;
+    } catch (e) {
+      setIsLoading(false);
+      throw e;
     }
   };
 
-  // ADDED: Function for RoleSwitcher
-  const resetRole = () => {
-    if (user && originalRole) {
-      setUser(prevUser => ({ ...prevUser, role: originalRole }));
+  const loginAsGuest = async () => {
+    setIsLoading(true);
+    try {
+      const credential = await signInAnonymously(auth);
+      setIsLoading(false);
+      return credential;
+    } catch (e) {
+      setIsLoading(false);
+      throw e;
     }
   };
 
-  const value = {
-    user,
-    isAuthenticated: !!user,
-    userRole: user?.role, // <-- Added this for convenience
-    isLoading,
-    login,
-    signup,
-    loginAsGuest,
-    logout,
-    originalRole,
-    loginWithGoogle,
-    loginWithPhone,
-    switchRole, // <-- ADDED
-    resetRole,  // <-- ADDED
+  const logout = async () => {
+    await signOut(auth);
+    setUser(null);
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        isAuthenticated: !!user,
+        userRole: user?.role || 'guest',
+        isLoading,
+        login,
+        signup,
+        loginAsGuest,
+        loginWithGoogle,
+        loginWithPhone,
+        logout,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 };

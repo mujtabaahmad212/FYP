@@ -1,252 +1,138 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { incidentAPI } from '../utils/api';
-import { useAuth } from './AuthContext';
-import { useSettings } from './SettingsContext';
-import { sendNotifications } from '../utils/notifications';
+import { db } from '../utils/firebase';
+import {
+  collection,
+  addDoc,
+  getDocs,
+  getDoc,
+  doc,
+  updateDoc,
+  deleteDoc,
+  query,
+  orderBy,
+  onSnapshot
+} from 'firebase/firestore';
 
 const IncidentsContext = createContext();
 
 export const useIncidents = () => {
   const context = useContext(IncidentsContext);
-  if (!context) {
-    throw new Error('useIncidents must be used within IncidentsProvider');
-  }
+  if (!context) throw new Error('useIncidents must be used within IncidentsProvider');
   return context;
 };
 
 export const IncidentsProvider = ({ children }) => {
-  const { isAuthenticated, userRole } = useAuth();
-  const { settings } = useSettings();
   const [incidents, setIncidents] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [lastUpdated, setLastUpdated] = useState(null);
 
-  // Fetch incidents from backend
-  const fetchIncidents = useCallback(async (filters = {}) => {
+  // Real-time Firestore listener
+  useEffect(() => {
     setLoading(true);
-    setError(null);
-    
-    try {
-      const response = await incidentAPI.getAll(filters);
-      const incidentsList = response.incidents || response.data || response || [];
-      setIncidents(Array.isArray(incidentsList) ? incidentsList : []);
-      setLastUpdated(new Date());
-      
-      // Also update localStorage as backup
-      if (Array.isArray(incidentsList)) {
-        localStorage.setItem('incidents', JSON.stringify(incidentsList));
-      }
-    } catch (err) {
-      console.error('Error fetching incidents:', err);
-      setError(err.message);
-      
-      // Fallback to localStorage
-      try {
-        const stored = localStorage.getItem('incidents');
-        if (stored) {
-          const storedIncidents = JSON.parse(stored);
-          setIncidents(Array.isArray(storedIncidents) ? storedIncidents : []);
-        }
-      } catch (parseError) {
-        console.error('Error parsing stored incidents:', parseError);
-        setIncidents([]);
-      }
-    } finally {
+    const incidentsRef = collection(db, 'incidents');
+    const q = query(incidentsRef, orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setIncidents(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       setLoading(false);
-    }
+    }, (err) => {
+      setError(err.message);
+      setLoading(false);
+    });
+    return () => unsubscribe();
   }, []);
 
-  // Create new incident
+  // Create incident (for both staff/public)
   const createIncident = useCallback(async (incidentData) => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const response = await incidentAPI.create(incidentData);
-      const newIncident = response.incident || response.data || response;
-      
-      // Add to local state
-      setIncidents(prev => [...prev, newIncident]);
-      
-      // Send notifications
-      await sendNotifications(newIncident, settings);
-
-      // Refresh list
-      await fetchIncidents();
-      
-      return newIncident;
+      const incidentsRef = collection(db, 'incidents');
+      const docRef = await addDoc(incidentsRef, { ...incidentData, createdAt: Date.now() });
+      return { id: docRef.id, ...incidentData, createdAt: Date.now() };
     } catch (err) {
-      console.error('Error creating incident:', err);
-      setError(err.message);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, [fetchIncidents, settings]);
-
-  // Public incident report (for viewers)
-  const reportPublicIncident = useCallback(async (incidentData) => {
-    try {
-      setLoading(true);
-      const response = await incidentAPI.reportPublic(incidentData);
-      const newIncident = response.incident || response.data || response;
-      
-      // Add to local state so it appears immediately
-      setIncidents(prev => [...prev, newIncident]);
-      
-      // Send notifications
-      await sendNotifications(newIncident, settings);
-
-      // Store tracking ID
-      if (response.trackingId || newIncident.id) {
-        localStorage.setItem('viewerIncidentId', (response.trackingId || newIncident.id).toString());
-      }
-      
-      return { incident: newIncident, trackingId: response.trackingId || newIncident.id };
-    } catch (err) {
-      console.error('Error reporting incident:', err);
-      setError(err.message);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, [settings]);
-
-  // Update incident
-  const updateIncident = useCallback(async (id, updates) => {
-    try {
-      setLoading(true);
-      const response = await incidentAPI.update(id, updates);
-      const updatedIncident = response.incident || response.data || response;
-      
-      // Update local state
-      setIncidents(prev => 
-        prev.map(inc => inc.id === parseInt(id) ? { ...inc, ...updatedIncident } : inc)
-      );
-      
-      return updatedIncident;
-    } catch (err) {
-      console.error('Error updating incident:', err);
       setError(err.message);
       throw err;
     } finally {
       setLoading(false);
     }
   }, []);
+  // For public reporting (same function)
+  const reportPublicIncident = createIncident;
 
-  // Update incident status
-  const updateIncidentStatus = useCallback(async (id, status) => {
-    try {
-      const updated = await incidentAPI.updateStatus(id, status);
-      await updateIncident(id, { status });
-      return updated;
-    } catch (err) {
-      console.error('Error updating incident status:', err);
-      throw err;
-    }
-  }, [updateIncident]);
-
-  // Delete incident
-  const deleteIncident = useCallback(async (id) => {
-    try {
-      setLoading(true);
-      await incidentAPI.delete(id);
-      
-      // Remove from local state
-      setIncidents(prev => prev.filter(inc => inc.id !== parseInt(id)));
-    } catch (err) {
-      console.error('Error deleting incident:', err);
-      setError(err.message);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // Get incident by ID
+  // Get one by id (for tracking)
   const getIncidentById = useCallback(async (id) => {
     try {
-      const incident = await incidentAPI.getById(id);
-      return incident;
+      const ref = doc(db, 'incidents', id);
+      const docSnap = await getDoc(ref);
+      return docSnap.exists()
+        ? { id: docSnap.id, ...docSnap.data() }
+        : null;
     } catch (err) {
-      console.error('Error fetching incident:', err);
-      // Fallback to local state
-      return incidents.find(inc => inc.id === parseInt(id)) || null;
+      setError(err.message);
+      return null;
     }
-  }, [incidents]);
+  }, []);
+  const getIncidentByTrackingId = getIncidentById;
 
-  // Get incident by tracking ID (for viewers)
-  const getIncidentByTrackingId = useCallback(async (trackingId) => {
+  // Update
+  const updateIncident = useCallback(async (id, updates) => {
+    setLoading(true);
     try {
-      const incident = await incidentAPI.getByTrackingId(trackingId);
-      return incident;
+      const docRef = doc(db, 'incidents', id);
+      await updateDoc(docRef, updates);
+      return getIncidentById(id);
     } catch (err) {
-      console.error('Error fetching incident by tracking ID:', err);
-      // Fallback to localStorage
-      try {
-        const viewerIncidents = JSON.parse(localStorage.getItem('viewerIncidents') || '[]');
-        const incident = viewerIncidents.find(inc => inc.id === parseInt(trackingId));
-        if (!incident) {
-          const allIncidents = JSON.parse(localStorage.getItem('incidents') || '[]');
-          return allIncidents.find(inc => inc.id === parseInt(trackingId)) || null;
-        }
-        return incident;
-      } catch (parseError) {
-        return null;
-      }
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [getIncidentById]);
+  const updateIncidentStatus = useCallback(async (id, status) => {
+    return updateIncident(id, { status });
+  }, [updateIncident]);
+
+  // Delete
+  const deleteIncident = useCallback(async (id) => {
+    setLoading(true);
+    try {
+      await deleteDoc(doc(db, 'incidents', id));
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
     }
   }, []);
 
-  // Auto-refresh incidents for authenticated users
-  useEffect(() => {
-    if (isAuthenticated && (userRole === 'admin' || userRole === 'officer')) {
-      fetchIncidents();
-      
-      // Set up auto-refresh every 30 seconds
-      const interval = setInterval(() => {
-        fetchIncidents();
-      }, 30000);
-      
-      return () => clearInterval(interval);
-    }
-  }, [isAuthenticated, userRole, fetchIncidents]);
-
-  // Load from localStorage on mount as fallback
-  useEffect(() => {
-    if (incidents.length === 0) {
-      try {
-        const stored = localStorage.getItem('incidents');
-        if (stored) {
-          const storedIncidents = JSON.parse(stored);
-          if (Array.isArray(storedIncidents) && storedIncidents.length > 0) {
-            setIncidents(storedIncidents);
-          }
-        }
-      } catch (err) {
-        console.error('Error loading incidents from localStorage:', err);
-      }
+  // Manual re-fetch (not needed for realtime, but useful if called elsewhere)
+  const fetchIncidents = useCallback(async () => {
+    setLoading(true);
+    try {
+      const q = query(collection(db, 'incidents'), orderBy('createdAt', 'desc'));
+      const snapshot = await getDocs(q);
+      setIncidents(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
   }, []);
-
-  const value = {
-    incidents,
-    loading,
-    error,
-    lastUpdated,
-    fetchIncidents,
-    createIncident,
-    reportPublicIncident,
-    updateIncident,
-    updateIncidentStatus,
-    deleteIncident,
-    getIncidentById,
-    getIncidentByTrackingId,
-    refreshIncidents: fetchIncidents,
-  };
 
   return (
-    <IncidentsContext.Provider value={value}>
+    <IncidentsContext.Provider value={{
+      incidents,
+      loading,
+      error,
+      fetchIncidents,
+      createIncident,
+      reportPublicIncident,
+      updateIncident,
+      updateIncidentStatus,
+      deleteIncident,
+      getIncidentById,
+      getIncidentByTrackingId
+    }}>
       {children}
     </IncidentsContext.Provider>
   );
 };
-

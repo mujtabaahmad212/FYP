@@ -4,11 +4,7 @@ import { AlertTriangle } from 'lucide-react';
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { 
-      hasError: false, 
-      error: null,
-      errorInfo: null
-    };
+    this.state = { hasError: false, error: null, errorInfo: null };
   }
 
   static getDerivedStateFromError(error) {
@@ -16,12 +12,8 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error('Error caught by boundary:', error);
-    console.error('Error info:', errorInfo);
-    this.setState({
-      error,
-      errorInfo
-    });
+    console.error('ErrorBoundary caught:', error, errorInfo);
+    this.setState({ error, errorInfo });
   }
 
   render() {
@@ -34,14 +26,10 @@ class ErrorBoundary extends React.Component {
                 <AlertTriangle className="w-8 h-8 text-red-600" />
               </div>
               <h2 className="text-2xl font-bold text-slate-900 mb-2">Something went wrong</h2>
-              <p className="text-slate-600 mb-4">
-                We're sorry, but something unexpected happened. Please refresh the page.
-              </p>
+              <p className="text-slate-600 mb-4">We're sorry — refresh or try again. If it keeps happening, contact support.</p>
               {this.state.error && (
                 <details className="mt-4 text-left bg-slate-50 p-4 rounded-lg">
-                  <summary className="cursor-pointer font-semibold text-slate-900 mb-2">
-                    Error Details (Click to expand)
-                  </summary>
+                  <summary className="cursor-pointer font-semibold text-slate-900 mb-2">Error Details</summary>
                   <pre className="text-xs text-slate-700 overflow-auto">
                     {this.state.error.toString()}
                     {this.state.errorInfo?.componentStack}
@@ -50,28 +38,13 @@ class ErrorBoundary extends React.Component {
               )}
             </div>
             <div className="flex gap-3 justify-center">
-              <button
-                onClick={() => {
-                  window.location.reload();
-                }}
-                className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-semibold transition-colors"
-              >
-                Refresh Page
-              </button>
-              <button
-                onClick={() => {
-                  this.setState({ hasError: false, error: null, errorInfo: null });
-                }}
-                className="px-6 py-3 bg-slate-200 text-slate-700 rounded-xl hover:bg-slate-300 font-semibold transition-colors"
-              >
-                Try Again
-              </button>
+              <button onClick={() => window.location.reload()} className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700">Refresh Page</button>
+              <button onClick={() => this.setState({ hasError: false, error: null, errorInfo: null })} className="px-6 py-3 bg-slate-200 rounded-xl hover:bg-slate-300">Try Again</button>
             </div>
           </div>
         </div>
       );
     }
-
     return this.props.children;
   }
 }

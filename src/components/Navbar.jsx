@@ -1,35 +1,36 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom'; // Import Link and useLocation
-import { Bell, LogOut, Shield, AlertTriangle, FileText, Settings, MapPin, TrendingUp, ChevronDown } from 'lucide-react';
+import { Bell, Menu, LogOut, X, Shield, AlertTriangle, FileText, Settings, MapPin, TrendingUp, User, ChevronDown } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const Navbar = () => {
-  const { logout, user, userRole } = useAuth(); // Get userRole from context
+  const { logout, user, userRole } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
-  const location = useLocation(); // Get current page location
 
-  // Navigation items based on role
+  const currentPage = location.pathname.substring(1) || 'dashboard';
+
+  // Define menu items based on user role
   const getMenuItems = () => {
-    if (userRole === 'admin' || userRole === 'officer') {
-      return [
-        { id: 'dashboard', label: 'Dashboard', icon: TrendingUp, path: '/dashboard' },
-        { id: 'incidents', label: 'Incidents', icon: AlertTriangle, path: '/incidents' },
-        { id: 'map', label: 'Live Map', icon: MapPin, path: '/map' },
-        { id: 'reports', label: 'Reports', icon: FileText, path: '/reports' },
-        ...(userRole === 'admin' ? [{ id: 'settings', label: 'Settings', icon: Settings, path: '/settings' }] : [])
-      ];
-    }
-    // No menu items for viewers in the admin panel
-    return [];
+    const baseItems = [
+      { id: 'dashboard', label: 'Dashboard', icon: TrendingUp, roles: ['admin', 'officer', 'viewer'] },
+      { id: 'incidents', label: 'Incidents', icon: AlertTriangle, roles: ['admin', 'officer', 'viewer'] },
+      { id: 'map', label: 'Live Map', icon: MapPin, roles: ['admin', 'officer', 'viewer'] },
+      { id: 'reports', label: 'Reports', icon: FileText, roles: ['admin', 'officer'] },
+      { id: 'settings', label: 'Settings', icon: Settings, roles: ['admin'] }
+    ];
+
+    return baseItems.filter(item => item.roles.includes(userRole));
   };
 
   const menuItems = getMenuItems();
 
-  // Close dropdown when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setDropdownOpen(false);
       }
     };
@@ -37,104 +38,172 @@ const Navbar = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const handleNavClick = (pageId) => {
+    navigate(`/${pageId}`);
+    setMobileMenuOpen(false);
+    setDropdownOpen(false);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/login', { replace: true });
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
+
+  const getRoleBadgeColor = (role) => {
+    switch (role) {
+      case 'admin': return 'from-blue-500 to-blue-600';
+      case 'officer': return 'from-green-500 to-green-600';
+      case 'viewer': return 'from-purple-500 to-purple-600';
+      default: return 'from-gray-500 to-gray-600';
+    }
+  };
+
   return (
-    <nav className="fixed top-0 right-0 left-0 bg-white/95 backdrop-blur-lg border-b border-slate-200/50 z-50 shadow-sm">
-      <div className="h-16 flex items-center justify-between px-4 sm:px-6">
-        {/* Logo and Desktop Navigation */}
-        <div className="flex items-center gap-4 sm:gap-8 flex-1">
-          {/* Logo */}
-          <div className="flex items-center gap-2 sm:gap-3">
+    <nav className="fixed top-0 right-0 left-0 bg-white/95 backdrop-blur-lg border-b border-slate-200 z-50 shadow-sm">
+      <div className="h-16 flex items-center justify-between px-4 sm:px-6 max-w-7xl mx-auto">
+        {/* Logo and Brand */}
+        <div className="flex items-center gap-4 sm:gap-8">
+          <button 
+            onClick={() => navigate('/dashboard')}
+            className="flex items-center gap-2 hover:opacity-80 transition"
+          >
             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
               <Shield className="w-6 h-6 text-white" />
             </div>
             <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent hidden sm:block">
               SecureWatch
             </h1>
-          </div>
+          </button>
 
           {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center gap-1">
-            {menuItems.map((item) => {
+            {menuItems.map(item => {
               const Icon = item.icon;
-              // Check if current path starts with the item's path
-              const isActive = location.pathname.startsWith(item.path);
-              
+              const isActive = currentPage === item.id;
               return (
-                <Link
+                <button
                   key={item.id}
-                  to={item.path} // Use Link's "to" prop for navigation
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 group ${
+                  onClick={() => handleNavClick(item.id)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 ${
                     isActive
-                      ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/50'
+                      ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg'
                       : 'text-slate-700 hover:bg-slate-100'
                   }`}
                 >
-                  <Icon className={`w-5 h-5 ${isActive ? 'scale-110' : 'group-hover:scale-110'} transition-transform duration-200`} />
+                  <Icon className={`w-5 h-5 ${isActive ? 'scale-110' : ''}`} />
                   <span className="font-medium">{item.label}</span>
-                </Link>
+                </button>
               );
             })}
           </div>
         </div>
-        
+
         {/* Right Side Actions */}
         <div className="flex items-center gap-2 sm:gap-4">
-          {/* User Role Badge */}
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-100">
-            <div className={`w-2 h-2 rounded-full ${
-              userRole === 'admin' 
-                ? 'bg-blue-500' 
-                : userRole === 'officer' 
-                  ? 'bg-green-500' 
-                  : 'bg-purple-500'
-            } animate-pulse`}></div>
-            <span className="text-sm font-medium text-slate-700 capitalize">
-              {userRole || 'Guest'}
-            </span>
+          {/* Role Badge */}
+          <div className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r ${getRoleBadgeColor(userRole)} text-white shadow`}>
+            <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
+            <span className="text-sm font-medium capitalize">{userRole || 'Guest'}</span>
           </div>
 
           {/* Notifications */}
-          <button className="relative p-2 hover:bg-slate-100 rounded-lg transition-all duration-200 hover:scale-110 active:scale-95 group">
-            <Bell className="w-6 h-6 text-slate-700 group-hover:text-blue-600 transition-colors" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full animate-pulse-glow ring-2 ring-white"></span>
+          <button className="relative p-2 hover:bg-slate-100 rounded-lg transition" title="Notifications">
+            <Bell className="w-6 h-6 text-slate-700" />
+            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse ring-2 ring-white" />
           </button>
 
-          <div className="hidden sm:block w-px h-6 bg-slate-200"></div>
-
-          {/* Desktop Dropdown Menu */}
-          <div className="relative" ref={dropdownRef}>
+          {/* User Menu (Desktop) */}
+          <div className="hidden lg:block relative" ref={dropdownRef}>
             <button
-              onClick={() => setDropdownOpen(!dropdownOpen)}
-              className="flex items-center gap-2 px-3 py-2 hover:bg-slate-100 rounded-lg transition-colors group"
+              onClick={() => setDropdownOpen(prev => !prev)}
+              className="flex items-center gap-2 px-3 py-2 hover:bg-slate-100 rounded-lg transition"
             >
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white text-sm font-bold">
-                {user?.name?.charAt(0).toUpperCase() || userRole?.charAt(0).toUpperCase() || 'U'}
+                {user?.displayName?.charAt(0)?.toUpperCase() || 'U'}
               </div>
-              <ChevronDown className={`w-4 h-4 text-slate-600 transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`w-4 h-4 text-slate-600 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
             </button>
 
-            {/* Dropdown Menu */}
             {dropdownOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden animate-fadeIn">
-                <div className="p-3 border-b border-slate-200">
-                  <p className="font-semibold text-slate-900 text-sm capitalize">{userRole || 'Guest'}</p>
+              <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden">
+                <div className="p-4 border-b border-slate-200 bg-slate-50">
+                  <p className="font-semibold text-slate-900">{user?.displayName || 'User'}</p>
                   <p className="text-xs text-slate-600 truncate">{user?.email || 'No email'}</p>
+                  <span className={`inline-block mt-2 px-2 py-1 rounded-full text-xs font-medium bg-gradient-to-r ${getRoleBadgeColor(userRole)} text-white`}>
+                    {userRole}
+                  </span>
                 </div>
                 <button
-                  onClick={logout}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-red-50 hover:text-red-600 transition-colors group"
+                  onClick={handleLogout}
+                  className="w-full text-left px-4 py-3 hover:bg-red-50 flex items-center gap-3 text-red-600 transition"
                 >
-                  <LogOut className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                  <LogOut className="w-4 h-4" />
                   <span className="font-medium">Logout</span>
                 </button>
               </div>
             )}
           </div>
 
-          {/* Mobile Menu Button - REMOVED */}
-          {/* The mobile menu dropdown is also REMOVED */}
+          {/* Mobile Menu Toggle */}
+          <button
+            onClick={() => setMobileMenuOpen(prev => !prev)}
+            className="lg:hidden p-2 rounded-lg hover:bg-slate-100 transition"
+          >
+            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
         </div>
       </div>
+
+      {/* Mobile Menu */}
+      {mobileMenuOpen && (
+        <div className="lg:hidden border-t border-slate-200 bg-white">
+          <div className="px-4 py-2 space-y-1 max-h-[calc(100vh-4rem)] overflow-y-auto">
+            {menuItems.map(item => {
+              const Icon = item.icon;
+              const isActive = currentPage === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleNavClick(item.id)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition ${
+                    isActive
+                      ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white'
+                      : 'text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <Icon className="w-5 h-5" />
+                  <span className="font-medium">{item.label}</span>
+                </button>
+              );
+            })}
+
+            {/* Mobile User Info */}
+            <div className="pt-4 mt-4 border-t border-slate-200">
+              <div className="px-4 py-3 bg-slate-50 rounded-xl mb-2">
+                <p className="font-semibold text-slate-900">{user?.displayName || 'User'}</p>
+                <p className="text-xs text-slate-600 truncate">{user?.email || 'No email'}</p>
+                <span className={`inline-block mt-2 px-2 py-1 rounded-full text-xs font-medium bg-gradient-to-r ${getRoleBadgeColor(userRole)} text-white`}>
+                  {userRole}
+                </span>
+              </div>
+              <button
+                onClick={() => {
+                  handleLogout();
+                  setMobileMenuOpen(false);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 transition"
+              >
+                <LogOut className="w-5 h-5" />
+                <span className="font-medium">Logout</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </nav>
   );
 };

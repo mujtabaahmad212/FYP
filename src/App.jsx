@@ -1,121 +1,73 @@
 import React from 'react';
-import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
-import { useAuth } from './context/AuthContext';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import { IncidentsProvider } from './context/IncidentsContext';
+import { SettingsProvider } from './context/SettingsContext';
 
-// Layout
-import Navbar from "./components/Navbar";
-
-// Components
-import IncidentList from './components/IncidentList'; // Typo is still here, make sure to rename the file!
-import MapView from "./components/MapView";
-
-// Pages
+import MainLayout from './layouts/MainLayout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
+import Unauthorized from './pages/Unauthorized';
+import MapView from './components/MapView';
+import IncidentList from './components/IncdentList';
 import ReportIncidentForm from './pages/ReportIncidentForm';
+import ViewerLanding from './pages/ViewerLanding';
 import TrackIncident from './components/TrackIncident';
-// Assuming you have this file from the first batch of code
-import PublicPage from './pages/PublicPage'; 
-import Unauthorized from './pages/Unauthorized'; // Added this import
+import ProtectedRoute from './components/ProtectedRoute';
+import ErrorBoundary from './components/ErrorBoundary';
 
-// Helper component for protected routes
-const ProtectedLayout = () => {
-  const { isAuthenticated, userRole } = useAuth();
+const AppRoutes = () => (
+  <Routes>
+    {/* Public Routes */}
+    <Route path="/login" element={<Login />} />
+    <Route path="/" element={<Navigate to="/viewer" replace />} />
+    <Route path="/unauthorized" element={<Unauthorized />} />
+    <Route path="/viewer" element={<ViewerLanding />} />
+    <Route path="/report-incident" element={<ReportIncidentForm />} />
+    <Route path="/track" element={<TrackIncident />} />
 
-  // Redirect to login if not authenticated
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
+    {/* Protected Routes for authenticated users */}
+    <Route
+      element={
+        <ProtectedRoute allowedRoles={['admin', 'officer', 'viewer']}>
+          <MainLayout />
+        </ProtectedRoute>
+      }
+    >
+      <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/incidents" element={<IncidentList />} />
+      <Route path="/map" element={<MapView />} />
+      <Route path="/reports" element={
+        <ProtectedRoute allowedRoles={['admin', 'officer']}>
+          <Reports />
+        </ProtectedRoute>
+      } />
+      <Route path="/settings" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <Settings />
+        </ProtectedRoute>
+      } />
+    </Route>
 
-  // Redirect viewers away from admin panel
-  if (userRole === 'viewer') {
-    return <Navigate to="/report" replace />;
-  }
+    {/* Catch all - redirect to viewer */}
+    <Route path="*" element={<Navigate to="/viewer" replace />} />
+  </Routes>
+);
 
+export default function App() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
-      <Navbar /> {/* No props needed anymore */}
-      <main className="pt-20 p-4 sm:p-6">
-        <div className="max-w-7xl mx-auto">
-          <Outlet /> {/* Renders the nested child route */}
-        </div>
-      </main>
-    </div>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <AuthProvider>
+          <SettingsProvider>
+            <IncidentsProvider>
+              <AppRoutes />
+            </IncidentsProvider>
+          </SettingsProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
   );
-};
-
-// Helper component for public-facing pages
-const PublicLayout = () => {
-  return (
-    <div className="min-h-screen bg-slate-50">
-      {/* You can add a simple public navbar here if you want */}
-      <main className="p-4 sm:p-6">
-        <div className="max-w-4xl mx-auto">
-          <Outlet />
-        </div>
-      </main>
-    </div>
-  );
-};
-
-const App = () => {
-  const { isAuthenticated, isLoading, userRole } = useAuth();
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="spinner w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
-  }
-
-  return (
-    <Routes>
-      {/* Public Routes */}
-      <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/dashboard" />} />
-      <Route path="/unauthorized" element={<Unauthorized />} />
-
-      <Route element={<PublicLayout />}>
-        <Route path="/report" element={<ReportIncidentForm />} />
-        <Route path="/track" element={<TrackIncident />} />
-        {/* Fallback public page */}
-        <Route path="/public" element={
-            isAuthenticated && userRole !== 'viewer' 
-            ? <Navigate to="/dashboard" /> 
-            : <PublicPage />
-          } 
-        />
-      </Route>
-
-      {/* Protected Admin/Officer Routes */}
-      <Route element={<ProtectedLayout />}>
-        <Route path="/dashboard" element={<Dashboard />} />
-        {/* Pass userRole prop here */}
-        <Route path="/incidents" element={<IncidentList userRole={userRole} />} /> 
-        <Route path="/map" element={<MapView />} />
-        <Route path="/reports" element={<Reports />} />
-        
-        {/* Admin-only settings route */}
-        <Route 
-          path="/settings" 
-          element={userRole === 'admin' ? <Settings /> : <Navigate to="/unauthorized" />} 
-        />
-      </Route>
-
-      {/* Default Redirects */}
-      <Route 
-        path="/" 
-        element={
-          !isAuthenticated ? <Navigate to="/public" /> 
-          : userRole === 'viewer' ? <Navigate to="/report" />
-          : <Navigate to="/dashboard" />
-        } 
-      />
-      <Route path="*" element={<Navigate to="/" />} />
-    </Routes>
-  );
-};
-
-export default App;
+}

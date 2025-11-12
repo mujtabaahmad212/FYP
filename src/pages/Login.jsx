@@ -1,244 +1,321 @@
-import React, { useState, useEffect } from 'react';
-import { Shield, Mail, Lock, Phone, MessageSquare, ArrowRight, UserPlus, LogIn } from 'lucide-react';
+import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { RecaptchaVerifier } from 'firebase/auth';
-import { auth } from '../utils/firebase';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { Shield, Mail, Lock, AlertCircle, Loader, Eye, EyeOff } from 'lucide-react';
 
 const Login = () => {
-  const { login, signup, loginWithGoogle, loginWithPhone } = useAuth();
-  
-  const [authMethod, setAuthMethod] = useState('email'); // email, phone
-
+  const { login, signup, loginAsGuest, loginWithGoogle } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [verificationCode, setVerificationCode] = useState('');
-  
-  const [recaptcha, setRecaptcha] = useState(null);
-  const [confirmationResult, setConfirmationResult] = useState(null);
-  const [error, setError] = useState('');
+  const [mode, setMode] = useState('login'); // "login" or "signup"
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [showPwd, setShowPwd] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetSent, setResetSent] = useState(false);
 
-  useEffect(() => {
-    const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-      'size': 'invisible'
-    });
-    setRecaptcha(verifier);
-  }, []);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from?.pathname || '/dashboard';
 
-  const getFirebaseErrorMessage = (errorCode) => {
-    switch (errorCode) {
-      case 'auth/invalid-email':
-        return 'Please enter a valid email address.';
-      case 'auth/user-disabled':
-        return 'This account has been disabled.';
-      case 'auth/user-not-found':
-        return 'No account found with this email. Please sign up.';
-      case 'auth/wrong-password':
-        return 'Incorrect password. Please try again.';
-      case 'auth/email-already-in-use':
-        return 'This email is already registered. Please log in.';
-      case 'auth/weak-password':
-        return 'Password should be at least 6 characters.';
-      case 'auth/invalid-phone-number':
-        return 'Please enter a valid phone number (e.g., +16505551234).';
-      case 'auth/too-many-requests':
-        return 'Too many requests. Please try again later.';
-      case 'auth/invalid-verification-code':
-        return 'Invalid verification code. Please try again.';
-      default:
-        return 'An unexpected error occurred. Please try again.';
+  // Optional: implement forgot password with Firebase
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    setError('');
+    setResetSent(false);
+    try {
+      if (!resetEmail) {
+        setError('Enter your email to reset password.');
+        return;
+      }
+      await import('firebase/auth').then(({ sendPasswordResetEmail }) =>
+        sendPasswordResetEmail(require('../utils/firebase').auth, resetEmail)
+      );
+      setResetSent(true);
+    } catch (err) {
+      setError(err.message || "Failed to send reset email.");
     }
   };
 
-  const handleEmailSubmit = async (action) => {
-    setLoading(true);
+  // Login or signup handler
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     setError('');
+    setLoading(true);
+
     try {
-      if (action === 'login') {
-        await login(email, password);
+      if (mode === 'signup') {
+        await signup(email, password);
+        setMode('login');
+        setError("Sign up successful! You can log in now.");
+        setEmail('');
+        setPassword('');
+        setLoading(false);
+        return;
       } else {
-        await signup(email, password, 'viewer');
+        await login(email, password);
+        navigate(from, { replace: true });
       }
     } catch (err) {
-      setError(getFirebaseErrorMessage(err.code));
+      if (err.code === 'auth/email-already-in-use') {
+        setError('Email already exists. Please log in instead.');
+      } else if (err.code === 'auth/user-not-found') {
+        setError('No account found. Please sign up first.');
+      } else if (err.code === 'auth/wrong-password') {
+        setError('Incorrect password. Please try again.');
+      } else if (err.code === 'auth/invalid-email') {
+        setError('Invalid email address format.');
+      } else if (err.code === 'auth/too-many-requests') {
+        setError('Too many failed attempts. Please try again later.');
+      } else {
+        setError(err.message || 'Auth failed. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGuestLogin = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      await loginAsGuest();
+      navigate('/viewer', { replace: true });
+    } catch (err) {
+      setError('Guest login failed. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   const handleGoogleLogin = async () => {
-    setLoading(true);
     setError('');
+    setLoading(true);
     try {
       await loginWithGoogle();
+      navigate(from, { replace: true });
     } catch (err) {
-      setError(getFirebaseErrorMessage(err.code));
+      setError('Google login failed. Please try again.');
     } finally {
       setLoading(false);
     }
   };
-
-  const handlePhoneSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-    try {
-      const result = await loginWithPhone(phoneNumber, recaptcha);
-      setConfirmationResult(result);
-    } catch (err) {
-      setError(getFirebaseErrorMessage(err.code));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerifyCode = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-    try {
-      await confirmationResult.confirm(verificationCode);
-    } catch (err) {
-      setError(getFirebaseErrorMessage(err.code));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const renderEmailForm = () => (
-    <form onSubmit={(e) => e.preventDefault()} className="space-y-5 animate-fadeIn">
-      <div>
-        <label className="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
-        <div className="relative">
-          <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full pl-12 pr-4 py-3.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 bg-gray-50 focus:bg-white"
-            placeholder="name@example.com"
-            required
-          />
-        </div>
-      </div>
-      <div>
-        <label className="block text-sm font-semibold text-gray-700 mb-2">Password</label>
-        <div className="relative">
-          <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full pl-12 pr-4 py-3.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 bg-gray-50 focus:bg-white"
-            placeholder="••••••••"
-            required
-          />
-        </div>
-      </div>
-      <div className="flex gap-4">
-        <button onClick={() => handleEmailSubmit('login')} disabled={loading} className="w-full btn-primary flex items-center justify-center gap-3 px-6 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 font-semibold shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
-          {loading ? <div className="spinner w-5 h-5 border-2"></div> : <LogIn size={20}/>}
-          <span>Sign In</span>
-        </button>
-        <button onClick={() => handleEmailSubmit('signup')} disabled={loading} className="w-full btn-secondary flex items-center justify-center gap-3 px-6 py-4 bg-gray-200 text-gray-800 rounded-xl hover:bg-gray-300 font-semibold shadow-lg transition-all duration-200 disabled:opacity-50">
-          {loading ? <div className="spinner w-5 h-5 border-2"></div> : <UserPlus size={20}/>}
-          <span>Sign Up</span>
-        </button>
-      </div>
-    </form>
-  );
-
-  const renderPhoneForm = () => (
-    <form onSubmit={handlePhoneSubmit} className="space-y-5 animate-fadeIn">
-      <div>
-        <label className="block text-sm font-semibold text-gray-700 mb-2">Phone Number</label>
-        <div className="relative">
-          <Phone className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-          <input
-            type="tel"
-            value={phoneNumber}
-            onChange={(e) => setPhoneNumber(e.target.value)}
-            className="w-full pl-12 pr-4 py-3.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 bg-gray-50 focus:bg-white"
-            placeholder="+16505551234"
-            required
-          />
-        </div>
-      </div>
-      <button type="submit" disabled={loading} className="w-full btn-primary flex items-center justify-center gap-3 px-6 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 font-semibold shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
-        {loading ? <div className="spinner w-5 h-5 border-2"></div> : <ArrowRight size={20}/>}
-        <span>{loading ? 'Sending Code...' : 'Send Verification Code'}</span>
-      </button>
-    </form>
-  );
-
-  const renderVerificationForm = () => (
-    <form onSubmit={handleVerifyCode} className="space-y-5 animate-fadeIn">
-      <div>
-        <label className="block text-sm font-semibold text-gray-700 mb-2">Verification Code</label>
-        <div className="relative">
-          <MessageSquare className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-          <input
-            type="text"
-            value={verificationCode}
-            onChange={(e) => setVerificationCode(e.target.value)}
-            className="w-full pl-12 pr-4 py-3.5 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 bg-gray-50 focus:bg-white"
-            placeholder="Enter 6-digit code"
-            required
-          />
-        </div>
-      </div>
-      <button type="submit" disabled={loading} className="w-full btn-primary flex items-center justify-center gap-3 px-6 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 font-semibold shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
-        {loading ? <div className="spinner w-5 h-5 border-2"></div> : <LogIn size={20}/>}
-        <span>{loading ? 'Verifying...' : 'Verify & Sign In'}</span>
-      </button>
-    </form>
-  );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 flex items-center justify-center p-4 relative overflow-hidden">
-      <div className="relative bg-white/95 backdrop-blur-lg rounded-3xl shadow-2xl p-8 sm:p-10 max-w-md w-full animate-scaleIn border border-white/20">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-cyan-50 p-6">
+      <div className="w-full max-w-md">
+        {/* Logo and Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-3xl mb-6 shadow-xl">
-            <Shield className="h-12 w-12 text-white" />
+          <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg mx-auto mb-4">
+            <Shield className="w-10 h-10 text-white" />
           </div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-2 gradient-text">Welcome to SecureWatch</h1>
-          <p className="text-gray-600 mt-2">Please sign in to continue</p>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
+            SecureWatch
+          </h1>
+          <p className="text-slate-600 mt-2">Security Incident Management System</p>
         </div>
 
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-lg animate-fadeIn">
-            <p className="text-sm font-medium">{error}</p>
+        {/* Card */}
+        <div className="bg-white rounded-2xl p-8 shadow-xl border border-slate-200">
+          <h2 className="text-2xl font-bold mb-2">{mode === 'login' ? "Welcome back" : "Sign Up"}</h2>
+          <p className="text-slate-600 mb-6">{mode === 'login' ? "Sign in to continue to your dashboard" : "Create an account to get started"}</p>
+
+          {/* Error Message */}
+          {error && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-red-800">{error}</p>
+            </div>
+          )}
+          {resetSent && (
+            <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-xl text-green-800 text-sm">
+              Password reset link sent! Check your email.
+            </div>
+          )}
+
+          {/* Login/Signup Form */}
+          <form onSubmit={handleSubmit} className="space-y-4" autoComplete="on">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Email Address</label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-3.5 w-5 h-5 text-slate-400" />
+                <input
+                  type="email"
+                  value={email}
+                  autoComplete="email"
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  required
+                  className="w-full pl-11 pr-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Password</label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-3.5 w-5 h-5 text-slate-400" />
+                <input
+                  type={showPwd ? "text" : "password"}
+                  value={password}
+                  autoComplete={mode === 'signup' ? "new-password" : "current-password"}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder={mode === 'signup' ? "Choose a strong password" : "Enter your password"}
+                  required
+                  className="w-full pl-11 pr-12 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                />
+                <button type="button" tabIndex={-1}
+                  onClick={() => setShowPwd((s) => !s)}
+                  className="absolute right-2 top-3.5 text-slate-500 hover:text-blue-600"
+                  aria-label={showPwd ? "Hide Password" : "Show Password"}>
+                  {showPwd ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-blue-600 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <>
+                  <Loader className="w-5 h-5 animate-spin" />
+                  {mode === "login" ? "Signing in..." : "Signing up..."}
+                </>
+              ) : mode === "login" ? "Sign In" : "Sign Up"}
+            </button>
+          </form>
+
+          {/* Forgot/Reset Password Flow */}
+          {mode === "login" && (
+            <div className="mt-2 text-right">
+              <button
+                onClick={() => setMode("reset")}
+                className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+              >Forgot password?</button>
+            </div>
+          )}
+
+          {/* Sign up prompt/login switch */}
+          <div className="mt-6 text-center text-sm">
+            {mode === "login" && (
+              <>
+                Don't have an account?
+                <button
+                  className="ml-1 text-blue-600 hover:text-blue-700 font-medium"
+                  onClick={() => { setMode("signup"); setError(""); }}
+                >
+                  Sign Up
+                </button>
+              </>
+            )}
+            {mode === "signup" && (
+              <>
+                Already have an account?
+                <button
+                  className="ml-1 text-blue-600 hover:text-blue-700 font-medium"
+                  onClick={() => { setMode("login"); setError(""); }}
+                >
+                  Login
+                </button>
+              </>
+            )}
+            {mode === "reset" && (
+              <button
+                className="text-blue-600 hover:text-blue-700 font-medium ml-1"
+                onClick={() => { setMode("login"); setError(""); setResetSent(false); }}
+              >
+                Back to Login
+              </button>
+            )}
           </div>
-        )}
 
-        {confirmationResult ? renderVerificationForm() : (
-          <>
-            {authMethod === 'email' && renderEmailForm()}
-            {authMethod === 'phone' && renderPhoneForm()}
-
-            <div className="relative flex items-center my-6">
-              <div className="flex-grow border-t border-gray-300"></div>
-              <span className="flex-shrink mx-4 text-gray-500 text-sm">Or continue with</span>
-              <div className="flex-grow border-t border-gray-300"></div>
-            </div>
-
-            <div className="space-y-4">
-              <button onClick={handleGoogleLogin} disabled={loading} className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-white border-2 border-gray-200 text-gray-800 rounded-xl hover:bg-gray-100 font-semibold shadow-lg transition-all duration-200 disabled:opacity-50">
-                <svg className="w-6 h-6" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C12.955 4 4 12.955 4 24s8.955 20 20 20s20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/><path fill="#FF3D00" d="m6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C16.318 4 9.656 8.337 6.306 14.691z"/><path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0 1 24 36c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C12.955 4 4 12.955 4 24s8.955 20 20 20z"/><path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303c-.792 2.237-2.231 4.166-4.087 5.571l6.19 5.238C42.012 35.24 44 30.022 44 24c0-1.341-.138-2.65-.389-3.917z"/></svg>
-                <span>Sign in with Google</span>
+          {/* Reset password form */}
+          {mode === "reset" && (
+            <form onSubmit={handleForgotPassword} className="space-y-3 mt-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Enter email for password reset
+                </label>
+                <input
+                  type="email"
+                  value={resetEmail}
+                  autoComplete="email"
+                  onChange={e => setResetEmail(e.target.value)}
+                  className="input-field"
+                  placeholder="your email"
+                  required
+                />
+              </div>
+              <button
+                type="submit"
+                className="btn-primary w-full"
+              >
+                Send Reset Link
               </button>
-              <button onClick={() => setAuthMethod(authMethod === 'email' ? 'phone' : 'email')} disabled={loading} className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-white border-2 border-gray-200 text-gray-800 rounded-xl hover:bg-gray-100 font-semibold shadow-lg transition-all duration-200 disabled:opacity-50">
-                {authMethod === 'email' ? <Phone size={20}/> : <Mail size={20}/>}
-                <span>{authMethod === 'email' ? 'Sign in with Phone' : 'Sign in with Email'}</span>
-              </button>
+            </form>
+          )}
+
+          {/* Divider */}
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-slate-300"></div>
             </div>
-          </>
-        )}
-        <div id="recaptcha-container"></div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-4 bg-white text-slate-500">Or continue with</span>
+            </div>
+          </div>
+
+          {/* Alternative Login Options */}
+          <div className="space-y-3">
+            <button
+              onClick={handleGoogleLogin}
+              disabled={loading}
+              className="w-full py-3 border-2 border-slate-300 rounded-xl font-semibold hover:bg-slate-50 transition disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {/* ...Google SVG... */}
+              Sign in with Google
+            </button>
+
+            <button
+              onClick={handleGuestLogin}
+              disabled={loading}
+              className="w-full py-3 border-2 border-slate-300 rounded-xl font-semibold hover:bg-slate-50 transition disabled:opacity-50"
+            >
+              Continue as Guest
+            </button>
+          </div>
+
+          {/* Quick links */}
+          <div className="mt-6 text-center space-y-2">
+            <Link
+              to="/report-incident"
+              className="block text-sm text-blue-600 hover:text-blue-700 font-medium"
+            >
+              Report an Incident (No Login Required)
+            </Link>
+            <Link
+              to="/track"
+              className="block text-sm text-slate-600 hover:text-slate-700"
+            >
+              Track Your Report
+            </Link>
+          </div>
+        </div>
+
+        {/* Demo Credentials */}
+        <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+          <p className="text-sm font-semibold text-blue-900 mb-2">Demo Credentials:</p>
+          <div className="text-xs text-blue-800 space-y-1">
+            <p><strong>Admin:</strong> admin@securewatch.com / admin123</p>
+            <p><strong>Officer:</strong> officer@securewatch.com / officer123</p>
+            <p><strong>Viewer:</strong> viewer@securewatch.com / viewer123</p>
+          </div>
+        </div>
       </div>
     </div>
   );
-};
+}
 
 export default Login;

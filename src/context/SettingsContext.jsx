@@ -8,24 +8,23 @@ export const useSettings = () => {
   return context;
 };
 
-// Default settings that match the Settings.jsx page
 const defaultSettings = {
   notifications: {
     emailAlerts: true,
     pushNotifications: true,
     highPriorityOnly: false,
-    soundAlerts: true,
+    soundAlerts: true
   },
   features: {
     aiRecommendations: true,
     autoAssignment: false,
-    realTimeSync: true,
+    realTimeSync: true
   },
   appearance: {
     theme: 'light',
     language: 'en',
-    dateFormat: 'MM/DD/YYYY',
-  },
+    dateFormat: 'MM/DD/YYYY'
+  }
 };
 
 export const SettingsProvider = ({ children }) => {
@@ -34,12 +33,7 @@ export const SettingsProvider = ({ children }) => {
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
-        // Merge stored settings with defaults to ensure all keys exist
-        return {
-          notifications: { ...defaultSettings.notifications, ...parsed.notifications },
-          features: { ...defaultSettings.features, ...parsed.features },
-          appearance: { ...defaultSettings.appearance, ...parsed.appearance },
-        };
+        return { ...defaultSettings, ...parsed };
       } catch (e) {
         return defaultSettings;
       }
@@ -49,7 +43,6 @@ export const SettingsProvider = ({ children }) => {
 
   useEffect(() => {
     localStorage.setItem('appSettings', JSON.stringify(settings));
-    // Apply theme to body
     if (settings.appearance.theme === 'dark') {
       document.body.classList.add('dark');
     } else {
@@ -57,14 +50,13 @@ export const SettingsProvider = ({ children }) => {
     }
   }, [settings]);
 
-  // Updated function to handle nested state
   const updateSettings = (category, key, value) => {
     setSettings(prev => ({
       ...prev,
       [category]: {
         ...prev[category],
-        [key]: value,
-      },
+        [key]: value
+      }
     }));
   };
 
@@ -73,9 +65,5 @@ export const SettingsProvider = ({ children }) => {
     localStorage.setItem('appSettings', JSON.stringify(defaultSettings));
   };
 
-  return (
-    <SettingsContext.Provider value={{ settings, updateSettings, resetSettings }}>
-      {children}
-    </SettingsContext.Provider>
-  );
+  return <SettingsContext.Provider value={{ settings, updateSettings, resetSettings }}>{children}</SettingsContext.Provider>;
 };

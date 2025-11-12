@@ -1,17 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Calendar, FileText, TrendingUp } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { Download, FileText, TrendingUp, Calendar, Filter, BarChart3, PieChart as PieChartIcon } from 'lucide-react';
+import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { useIncidents } from '../context/IncidentsContext';
 import { analyticsAPI } from '../utils/api';
 
 const Reports = () => {
-  const { incidents, fetchIncidents } = useIncidents();
-  const [analyticsData, setAnalyticsData] = useState({
-    bySeverity: [],
-    byType: [],
-    byLocation: []
-  });
-  const [loading, setLoading] = useState(false);
+  const { incidents, fetchIncidents, loading } = useIncidents();
+  const [analyticsData, setAnalyticsData] = useState({ bySeverity: [], byType: [], byLocation: [] });
+  const [timeRange, setTimeRange] = useState('7days');
+  const [exportFormat, setExportFormat] = useState('pdf');
 
   useEffect(() => {
     fetchIncidents();
@@ -19,220 +16,253 @@ const Reports = () => {
   }, [fetchIncidents]);
 
   const loadAnalytics = async () => {
-    setLoading(true);
     try {
       const dashboardData = await analyticsAPI.getDashboardStats();
-      
-      // Set analytics from backend or calculate from incidents
-      if (dashboardData.bySeverity && dashboardData.bySeverity.length > 0) {
-        setAnalyticsData(prev => ({ ...prev, bySeverity: dashboardData.bySeverity }));
-      } else {
-        const bySeverity = calculateBySeverity(incidents);
-        setAnalyticsData(prev => ({ ...prev, bySeverity }));
-      }
-
-      if (dashboardData.byType && dashboardData.byType.length > 0) {
-        setAnalyticsData(prev => ({ ...prev, byType: dashboardData.byType }));
-      } else {
-        const byType = calculateByType(incidents);
-        setAnalyticsData(prev => ({ ...prev, byType }));
-      }
-
-      const hotspots = await analyticsAPI.getHotspots().catch(() => []);
-      if (hotspots && hotspots.length > 0) {
-        setAnalyticsData(prev => ({ ...prev, byLocation: hotspots }));
-      } else {
-        const byLocation = calculateHotspots(incidents);
-        setAnalyticsData(prev => ({ ...prev, byLocation }));
-      }
-    } catch (error) {
-      console.error('Error loading analytics:', error);
-      // Calculate from incidents
+      setAnalyticsData({
+        bySeverity: dashboardData.bySeverity && dashboardData.bySeverity.length
+          ? dashboardData.bySeverity
+          : calculateBySeverity(incidents),
+        byType: dashboardData.byType && dashboardData.byType.length
+          ? dashboardData.byType
+          : calculateByType(incidents),
+        byLocation: await analyticsAPI.getHotspots().catch(() => calculateHotspots(incidents)) || calculateHotspots(incidents)
+      });
+    } catch (err) {
+      console.error('Analytics error:', err);
       setAnalyticsData({
         bySeverity: calculateBySeverity(incidents),
         byType: calculateByType(incidents),
         byLocation: calculateHotspots(incidents)
       });
-    } finally {
-      setLoading(false);
     }
   };
 
-  const calculateBySeverity = (incidents) => {
-    const severityCount = { low: 0, medium: 0, high: 0, critical: 0 };
-    incidents.forEach(inc => {
-      const severity = inc.severity || 'medium';
-      if (severityCount.hasOwnProperty(severity)) {
-        severityCount[severity]++;
-      }
-    });
-    return [
-      { name: 'Low', value: severityCount.low },
-      { name: 'Medium', value: severityCount.medium },
-      { name: 'High', value: severityCount.high },
-      { name: 'Critical', value: severityCount.critical }
-    ];
-  };
+  const calculateBySeverity = (incidents) => [
+    { name: 'Low', value: incidents.filter(i => i.severity === 'low').length, color: '#10b981' },
+    { name: 'Medium', value: incidents.filter(i => i.severity === 'medium').length, color: '#f59e0b' },
+    { name: 'High', value: incidents.filter(i => i.severity === 'high').length, color: '#ef4444' },
+    { name: 'Critical', value: incidents.filter(i => i.severity === 'critical').length, color: '#dc2626' }
+  ];
 
   const calculateByType = (incidents) => {
-    const typeCount = {};
-    incidents.forEach(inc => {
-      const type = inc.type || 'Other';
-      typeCount[type] = (typeCount[type] || 0) + 1;
+    const counts = {};
+    incidents.forEach(i => {
+      const t = i.type || 'Other';
+      counts[t] = (counts[t] || 0) + 1;
     });
-    return Object.entries(typeCount).map(([name, value]) => ({ name, value }));
+    return Object.entries(counts).map(([name, value]) => ({ name, value }));
   };
 
   const calculateHotspots = (incidents) => {
     const locationCount = {};
-    incidents.forEach(inc => {
-      if (inc.location) {
-        locationCount[inc.location] = (locationCount[inc.location] || 0) + 1;
-      }
+    incidents.forEach(i => {
+      if (i.location) locationCount[i.location] = (locationCount[i.location] || 0) + 1;
     });
-    
     return Object.entries(locationCount)
       .map(([location, count]) => ({
         location,
         count,
-        severity: incidents.find(i => i.location === location)?.severity || 'medium'
+        severity: incidents.find(x => x.location === location)?.severity || 'medium'
       }))
       .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
+      .slice(0, 10);
   };
 
   useEffect(() => {
-    if (incidents.length > 0) {
-      loadAnalytics();
-    }
+    if (incidents.length) loadAnalytics();
   }, [incidents.length]);
 
-  const severityColors = {
-    low: '#10b981',
-    medium: '#f59e0b',
-    high: '#ef4444',
-    critical: '#dc2626'
-  };
-
-  const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
-
-  if (loading) {
+  if (loading && incidents.length === 0) {
     return (
-      <div className="space-y-6 animate-fadeIn">
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center">
-            <div className="spinner w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4 animate-spin"></div>
-            <p className="text-slate-600">Loading reports...</p>
-          </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-600 font-medium">Loading reports...</p>
         </div>
       </div>
     );
   }
 
+  const COLORS = ['#10b981', '#f59e0b', '#ef4444', '#dc2626'];
+
   return (
-    <div className="space-y-6 animate-fadeIn">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <div className="space-y-6 animate-in">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 gradient-text">Analytics & Reports</h2>
-          <p className="text-slate-600 mt-1">Comprehensive incident analytics and insights ({incidents.length} total incidents)</p>
+          <h2 className="text-3xl font-bold text-gradient">Analytics & Reports</h2>
+          <p className="text-slate-600 mt-1 flex items-center gap-2">
+            <TrendingUp className="w-4 h-4" />
+            Comprehensive incident analytics ({incidents.length} incidents)
+          </p>
         </div>
-        <button className="btn-primary flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl hover:from-blue-700 hover:to-blue-600 font-semibold shadow-lg hover:shadow-xl transition-all duration-200 hover-lift">
+        <button className="btn-primary flex items-center gap-2">
           <Download className="w-5 h-5" />
-          <span className="hidden sm:inline">Export PDF</span>
-          <span className="sm:hidden">Export</span>
+          Export Report
         </button>
       </div>
-      
+
+      {/* Time Range & Export Controls */}
+      <div className="card flex flex-col sm:flex-row sm:items-center gap-4">
+        <div className="flex-1">
+          <label className="block text-sm font-bold text-slate-900 mb-2 flex items-center gap-2">
+            <Calendar className="w-4 h-4" />
+            Time Period
+          </label>
+          <select
+            value={timeRange}
+            onChange={(e) => setTimeRange(e.target.value)}
+            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="7days">Last 7 Days</option>
+            <option value="30days">Last 30 Days</option>
+            <option value="90days">Last 3 Months</option>
+            <option value="1year">Last Year</option>
+            <option value="all">All Time</option>
+          </select>
+        </div>
+
+        <div className="flex-1">
+          <label className="block text-sm font-bold text-slate-900 mb-2">Export Format</label>
+          <select
+            value={exportFormat}
+            onChange={(e) => setExportFormat(e.target.value)}
+            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="pdf">PDF Report</option>
+            <option value="csv">CSV Data</option>
+            <option value="xlsx">Excel</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-200 card-hover">
-          <div className="flex items-center gap-2 mb-6">
-            <TrendingUp className="w-5 h-5 text-blue-600" />
-            <h3 className="text-lg font-semibold text-slate-900">Incidents by Severity</h3>
+        {/* Severity Distribution */}
+        <div className="card">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center">
+              <PieChartIcon className="w-5 h-5 text-red-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold">Incidents by Severity</h3>
+              <p className="text-sm text-slate-600">Distribution overview</p>
+            </div>
           </div>
+
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={analyticsData.bySeverity.length > 0 ? analyticsData.bySeverity : [
-              { name: 'Low', value: 0 },
-              { name: 'Medium', value: 0 },
-              { name: 'High', value: 0 },
-              { name: 'Critical', value: 0 }
-            ]}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="name" stroke="#64748b" />
-              <YAxis stroke="#64748b" />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: 'rgba(255, 255, 255, 0.95)', 
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '8px'
-                }} 
-              />
-              <Bar dataKey="value" radius={[8, 8, 0, 0]}>
-                {(analyticsData.bySeverity.length > 0 ? analyticsData.bySeverity : []).map((entry, index) => (
-                  <Bar key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+            <PieChart>
+              <Pie
+                data={analyticsData.bySeverity}
+                cx="50%"
+                cy="50%"
+                labelLine={false}
+                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                outerRadius={100}
+                fill="#8884d8"
+                dataKey="value"
+              >
+                {analyticsData.bySeverity.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
-              </Bar>
-            </BarChart>
+              </Pie>
+              <Tooltip />
+            </PieChart>
           </ResponsiveContainer>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-200 card-hover">
-          <div className="flex items-center gap-2 mb-6">
-            <FileText className="w-5 h-5 text-blue-600" />
-            <h3 className="text-lg font-semibold text-slate-900">Hotspot Locations</h3>
+        {/* Type Distribution */}
+        <div className="card">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
+              <BarChart3 className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold">Incidents by Type</h3>
+              <p className="text-sm text-slate-600">Category breakdown</p>
+            </div>
           </div>
-          <div className="space-y-3">
-            {analyticsData.byLocation.length > 0 ? (
-              analyticsData.byLocation.map((spot, i) => (
-                <div 
-                  key={i} 
-                  className="flex items-center justify-between p-4 bg-gradient-to-r from-slate-50 to-blue-50/30 rounded-xl border border-slate-200 hover:shadow-md transition-all duration-200"
-                >
-                  <div className="flex-1">
-                    <p className="font-semibold text-slate-900">{spot.location}</p>
-                    <p className="text-sm text-slate-600">{spot.count} incidents reported</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div 
-                      className="w-4 h-4 rounded-full shadow-sm" 
-                      style={{backgroundColor: severityColors[spot.severity] || severityColors.medium}}
-                    ></div>
-                    <span className="text-lg font-bold text-slate-700">{spot.count}</span>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="text-center py-8 text-slate-500">
-                <p>No location data available</p>
-              </div>
-            )}
-          </div>
+
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={analyticsData.byType} layout="vertical">
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis type="number" stroke="#64748b" fontSize={12} />
+              <YAxis dataKey="name" type="category" width={80} stroke="#64748b" fontSize={12} />
+              <Tooltip />
+              <Bar dataKey="value" fill="#3b82f6" radius={[0, 8, 8, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
 
-      <div className="bg-gradient-to-br from-white to-blue-50/30 rounded-2xl shadow-lg p-6 border border-slate-200 card-hover">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
-          <div>
-            <h3 className="text-lg font-semibold text-slate-900">Generate Custom Report</h3>
-            <p className="text-sm text-slate-600 mt-1">Filter and export incident data</p>
+      {/* Hotspots Table */}
+      <div className="card">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center">
+            <FileText className="w-5 h-5 text-orange-600" />
           </div>
-          <button className="btn-primary px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl hover:from-blue-700 hover:to-blue-600 font-semibold shadow-lg hover:shadow-xl transition-all duration-200 hover-lift">
-            <Download className="w-5 h-5 inline mr-2" />
-            Export PDF
-          </button>
+          <div>
+            <h3 className="text-lg font-bold">Top Incident Hotspots</h3>
+            <p className="text-sm text-slate-600">Areas with most incidents</p>
+          </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Time Period</label>
-            <select className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white">
-              <option>Last 7 Days</option>
-              <option>Last 30 Days</option>
-              <option>Last 3 Months</option>
-              <option>Last Year</option>
-            </select>
+
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b-2 border-slate-200">
+                <th className="text-left py-3 px-4 font-bold text-slate-900">Location</th>
+                <th className="text-center py-3 px-4 font-bold text-slate-900">Incidents</th>
+                <th className="text-center py-3 px-4 font-bold text-slate-900">Severity</th>
+                <th className="text-right py-3 px-4 font-bold text-slate-900">%</th>
+              </tr>
+            </thead>
+            <tbody>
+              {analyticsData.byLocation.map((spot, idx) => {
+                const percentage = ((spot.count / incidents.length) * 100).toFixed(1);
+                return (
+                  <tr key={idx} className="border-b border-slate-200 hover:bg-slate-50 transition">
+                    <td className="py-4 px-4 font-medium text-slate-900">{spot.location}</td>
+                    <td className="py-4 px-4 text-center">
+                      <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full font-bold text-sm">
+                        {spot.count}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4 text-center">
+                      <span className={`px-3 py-1 rounded-full font-bold text-xs ${
+                        spot.severity === 'critical' ? 'bg-red-100 text-red-800' :
+                        spot.severity === 'high' ? 'bg-orange-100 text-orange-800' :
+                        spot.severity === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-green-100 text-green-800'
+                      }`}>
+                        {spot.severity || 'medium'}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4 text-right text-slate-900 font-bold">{percentage}%</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Custom Report Generator */}
+      <div className="card">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
+            <Filter className="w-5 h-5 text-green-600" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Incident Type</label>
-            <select className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white">
+            <h3 className="text-lg font-bold">Generate Custom Report</h3>
+            <p className="text-sm text-slate-600">Filter and export incident data</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+          <div>
+            <label className="block text-sm font-bold text-slate-900 mb-2">Incident Type</label>
+            <select className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
               <option>All Types</option>
               <option>Theft</option>
               <option>Violence</option>
@@ -241,16 +271,32 @@ const Reports = () => {
               <option>Medical</option>
             </select>
           </div>
+
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Location</label>
-            <select className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white">
+            <label className="block text-sm font-bold text-slate-900 mb-2">Status</label>
+            <select className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+              <option>All Status</option>
+              <option>Open</option>
+              <option>Investigating</option>
+              <option>Resolved</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-slate-900 mb-2">Location</label>
+            <select className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
               <option>All Locations</option>
-              {analyticsData.byLocation.map((spot, i) => (
-                <option key={i} value={spot.location}>{spot.location}</option>
+              {analyticsData.byLocation.map((spot, idx) => (
+                <option key={idx} value={spot.location}>{spot.location}</option>
               ))}
             </select>
           </div>
         </div>
+
+        <button className="btn-primary flex items-center gap-2">
+          <Download className="w-5 h-5" />
+          Generate & Export Report
+        </button>
       </div>
     </div>
   );
