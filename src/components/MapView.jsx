@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, LayersControl, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import { Layers, LocateFixed, RefreshCw, MapPin, AlertTriangle, Navigation } from 'lucide-react';
+import { Layers, LocateFixed, RefreshCw, MapPin, AlertTriangle } from 'lucide-react';
 import { useIncidents } from '../context/IncidentsContext';
 
+// --- Fix Leaflet marker assets in Vite/CRA ---
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
@@ -12,6 +13,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png'
 });
 
+// --- Helper for severity-specific marker icon ---
 const getIncidentIcon = (severity) => {
   const colors = {
     low: '#10b981',
@@ -19,7 +21,6 @@ const getIncidentIcon = (severity) => {
     high: '#ef4444',
     critical: '#dc2626'
   };
-
   const color = colors[severity?.toLowerCase()] || colors.medium;
 
   return L.divIcon({
@@ -35,6 +36,50 @@ const getIncidentIcon = (severity) => {
   });
 };
 
+// --- Live user location marker ---
+const getUserLocationIcon = () => L.divIcon({
+  html: `<svg viewBox="0 0 32 32" width="40" height="40" fill="#0866ff" style="filter: drop-shadow(0 1px 2px rgba(0,32,96,0.4));"><circle cx="16" cy="16" r="12" fill="#fff" /><circle cx="16" cy="16" r="8" fill="#60a5fa"/><circle cx="16" cy="16" r="4" fill="#2563eb"/></svg>`,
+  iconSize: [40, 40],
+  iconAnchor: [20, 40],
+  popupAnchor: [0, -35],
+  className: "user-location-icon"
+});
+
+const UserLocationMarker = ({ onLocation }) => {
+  const [position, setPosition] = useState(null);
+  const map = useMap();
+  const watcher = useRef(null);
+
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+
+    watcher.current = navigator.geolocation.watchPosition(
+      (pos) => {
+        const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setPosition(coords);
+        if (onLocation) onLocation(coords);
+      },
+      (err) => {},
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 7000 }
+    );
+    return () => {
+      if (watcher.current) navigator.geolocation.clearWatch(watcher.current);
+    };
+  }, [onLocation]);
+
+  // Optionally always pan to position if user location changes
+  useEffect(() => {
+    if (position) { map.flyTo(position, 15); }
+  }, [position, map]);
+
+  return position ? (
+    <Marker position={position} icon={getUserLocationIcon()}>
+      <Popup>You Are Here</Popup>
+    </Marker>
+  ) : null;
+};
+
+// --- Map Controls (locate/refresh) ---
 const MapControls = ({ onLocate, onRefresh }) => {
   const map = useMap();
 
@@ -50,7 +95,6 @@ const MapControls = ({ onLocate, onRefresh }) => {
       }).addTo(map).bindPopup('Your Location').openPopup();
       onLocate(e.latlng);
     }).on('locationerror', () => {
-      console.error('Location permission denied');
       alert('Please enable location access to use this feature');
     });
   };
@@ -75,6 +119,7 @@ const MapControls = ({ onLocate, onRefresh }) => {
   );
 };
 
+// --- Auto fit map bounds to markers ---
 const AutoFitBounds = ({ incidents }) => {
   const map = useMap();
 
@@ -85,7 +130,6 @@ const AutoFitBounds = ({ incidents }) => {
           .filter(i => i.lat && i.lng && !isNaN(parseFloat(i.lat)) && !isNaN(parseFloat(i.lng)))
           .map(i => [parseFloat(i.lat), parseFloat(i.lng)])
       );
-
       if (bounds.isValid()) {
         map.fitBounds(bounds, { padding: [50, 50] });
       }
@@ -97,12 +141,9 @@ const AutoFitBounds = ({ incidents }) => {
 
 const MapView = () => {
   const { incidents, fetchIncidents, loading } = useIncidents();
-  const [userLocation, setUserLocation] = useState(null);
   const [selectedIncidentId, setSelectedIncidentId] = useState(null);
 
-  useEffect(() => {
-    fetchIncidents();
-  }, [fetchIncidents]);
+  useEffect(() => { fetchIncidents(); }, [fetchIncidents]);
 
   const incidentsWithLocation = incidents.filter(
     i => i.lat && i.lng && !isNaN(parseFloat(i.lat)) && !isNaN(parseFloat(i.lng))
@@ -121,7 +162,6 @@ const MapView = () => {
 
   return (
     <div className="space-y-6 animate-in">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-3xl font-bold text-gradient">Live Incident Map</h2>
@@ -132,9 +172,8 @@ const MapView = () => {
         </div>
       </div>
 
-      {/* Map Container */}
       <div className="card overflow-hidden">
-        <div className="relative h-[500px] sm:h-[600px] rounded-xl overflow-hidden">
+        <div className="relative h-[500px] sm:h-[600px] rounded-xl overflow-hidden z-10">
           <MapContainer center={[34.0151, 71.5249]} zoom={13} style={{ height: '100%', width: '100%' }}>
             <LayersControl position="topleft">
               <LayersControl.BaseLayer checked name="OpenStreetMap">
@@ -143,30 +182,25 @@ const MapView = () => {
                   attribution="&copy; OpenStreetMap contributors"
                 />
               </LayersControl.BaseLayer>
-
               <LayersControl.BaseLayer name="Dark Mode">
                 <TileLayer
                   url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
                   attribution="&copy; CARTO"
                 />
               </LayersControl.BaseLayer>
-
               <LayersControl.BaseLayer name="Satellite">
                 <TileLayer
                   url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
                   attribution="Esri"
                 />
               </LayersControl.BaseLayer>
-
               <LayersControl.Overlay checked name="Show Incidents">
                 {incidentsWithLocation.map(inc => (
                   <Marker
                     key={inc.id}
                     position={[parseFloat(inc.lat), parseFloat(inc.lng)]}
                     icon={getIncidentIcon(inc.severity)}
-                    eventHandlers={{
-                      click: () => setSelectedIncidentId(inc.id)
-                    }}
+                    eventHandlers={{ click: () => setSelectedIncidentId(inc.id) }}
                   >
                     <Popup>
                       <div className="w-64">
@@ -201,6 +235,14 @@ const MapView = () => {
                               {inc.status || 'open'}
                             </span>
                           </div>
+                          <div>
+                            <span className="font-medium text-slate-600">Reported by:</span>
+                            <span className="ml-2">{inc.reporterName || "Anonymous"}</span>
+                          </div>
+                          <div>
+                            <span className="font-medium text-slate-600">At:</span>
+                            <span className="ml-2">{inc.createdAt ? new Date(inc.createdAt).toLocaleString() : "N/A"}</span>
+                          </div>
                         </div>
                       </div>
                     </Popup>
@@ -209,8 +251,11 @@ const MapView = () => {
               </LayersControl.Overlay>
             </LayersControl>
 
+            {/* User's live location marker */}
+            <UserLocationMarker />
+
             <AutoFitBounds incidents={incidentsWithLocation} />
-            <MapControls onLocate={setUserLocation} onRefresh={fetchIncidents} />
+            <MapControls onLocate={() => {}} onRefresh={fetchIncidents} />
           </MapContainer>
         </div>
 
@@ -235,52 +280,6 @@ const MapView = () => {
           </div>
         </div>
       </div>
-
-      {/* Incidents List */}
-      {incidentsWithLocation.length > 0 && (
-        <div className="card">
-          <h3 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5 text-orange-600" />
-            Nearby Incidents
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
-            {incidentsWithLocation.map(inc => (
-              <button
-                key={inc.id}
-                onClick={() => setSelectedIncidentId(inc.id)}
-                className={`text-left p-4 rounded-lg border-2 transition-all hover:shadow-lg ${
-                  selectedIncidentId === inc.id
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-slate-200 hover:border-blue-300'
-                }`}
-              >
-                <h4 className="font-bold text-slate-900 mb-1">{inc.title || 'Untitled'}</h4>
-                <div className="flex items-center gap-2 text-sm text-slate-600 mb-2">
-                  <MapPin className="w-4 h-4" />
-                  {inc.location}
-                </div>
-                <div className="flex gap-2">
-                  <span className={`badge text-xs ${
-                    inc.severity === 'critical' ? 'bg-red-100 text-red-800' :
-                    inc.severity === 'high' ? 'bg-orange-100 text-orange-800' :
-                    inc.severity === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-green-100 text-green-800'
-                  }`}>
-                    {inc.severity || 'medium'}
-                  </span>
-                  <span className={`badge text-xs ${
-                    inc.status === 'open' ? 'bg-orange-100 text-orange-700' :
-                    inc.status === 'investigating' ? 'bg-blue-100 text-blue-700' :
-                    'bg-green-100 text-green-700'
-                  }`}>
-                    {inc.status || 'open'}
-                  </span>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 };

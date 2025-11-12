@@ -63,8 +63,8 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="fixed top-0 right-0 left-0 bg-white/95 backdrop-blur-lg border-b border-slate-200 z-50 shadow-sm">
-      <div className="h-16 flex items-center justify-between px-4 sm:px-6 max-w-7xl mx-auto">
+    <nav className="fixed top-0 right-0 left-0 bg-white/0 backdrop-blur-lg border-b border-white z-50 shadow-lg">
+      <div className="h-16 flex items-center justify-between px-4 sm:px-6 max-w-7xl mx-auto ">
         {/* Logo and Brand */}
         <div className="flex items-center gap-4 sm:gap-8">
           <button 
