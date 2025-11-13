@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, AlertTriangle, Filter, Download, Edit2, Trash2, ChevronDown } from 'lucide-react';
+import { Search, Plus, AlertTriangle, Filter, Download, Edit2, Trash2, ChevronDown, X, MapPin, Clock, User, RefreshCw } from 'lucide-react';
 import { useIncidents } from '../context/IncidentsContext';
 import { useAuth } from '../context/AuthContext';
 
 const IncidentList = () => {
-  const { incidents, loading, fetchIncidents, updateIncidentStatus, deleteIncident } = useIncidents();
+  const { incidents, loading, fetchIncidents, updateIncidentStatus, deleteIncident, createIncident } = useIncidents();
   const { userRole, isAuthenticated } = useAuth();
   const [filter, setFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -12,6 +12,18 @@ const IncidentList = () => {
   const [severityFilter, setSeverityFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [sortBy, setSortBy] = useState('recent');
+  const [showNewIncidentModal, setShowNewIncidentModal] = useState(false);
+  const [newIncident, setNewIncident] = useState({
+    title: '',
+    description: '',
+    type: 'Other',
+    severity: 'medium',
+    location: '',
+    lat: '',
+    lng: '',
+    status: 'open'
+  });
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated && (userRole === 'admin' || userRole === 'officer')) {
@@ -69,6 +81,65 @@ const IncidentList = () => {
     }
   };
 
+  // Handle new incident creation
+  const handleCreateIncident = async (e) => {
+    e.preventDefault();
+    if (!newIncident.title.trim() || !newIncident.location.trim()) {
+      alert('Title and location are required');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await createIncident({
+        ...newIncident,
+        reporterName: 'Admin/Officer',
+        createdAt: new Date().toISOString()
+      });
+      setShowNewIncidentModal(false);
+      setNewIncident({
+        title: '',
+        description: '',
+        type: 'Other',
+        severity: 'medium',
+        location: '',
+        lat: '',
+        lng: '',
+        status: 'open'
+      });
+      alert('Incident created successfully!');
+    } catch (err) {
+      alert('Failed to create incident: ' + err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Export to CSV
+  const exportToCSV = () => {
+    const headers = ['Title', 'Type', 'Severity', 'Status', 'Location', 'Reporter', 'Created At'];
+    const rows = filteredIncidents.map(inc => [
+      (inc.title || '').replace(/,/g, ';'),
+      inc.type || '',
+      inc.severity || '',
+      inc.status || '',
+      (inc.location || '').replace(/,/g, ';'),
+      inc.reporterName || 'Anonymous',
+      inc.createdAt ? new Date(inc.createdAt).toLocaleString() : ''
+    ]);
+
+    const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'incidents_list.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const getSeverityColor = (severity) => {
     const colors = {
       low: 'bg-green-100 text-green-800 border-green-300',
@@ -102,10 +173,16 @@ const IncidentList = () => {
           </p>
         </div>
         {canEdit && (
-          <button className="btn-primary flex items-center gap-2">
-            <Plus className="w-5 h-5" />
-            New Incident
-          </button>
+          <div className="flex gap-2">
+            <button onClick={fetchIncidents} className="btn-secondary flex items-center gap-2">
+              <RefreshCw className="w-5 h-5" />
+              Refresh
+            </button>
+            <button onClick={() => setShowNewIncidentModal(true)} className="btn-primary flex items-center gap-2">
+              <Plus className="w-5 h-5" />
+              New Incident
+            </button>
+          </div>
         )}
       </div>
 
@@ -134,7 +211,7 @@ const IncidentList = () => {
           </button>
 
           {/* Export */}
-          <button className="flex items-center gap-2 px-4 py-3 border-2 border-slate-300 rounded-xl hover:border-green-400 transition">
+          <button onClick={exportToCSV} className="flex items-center gap-2 px-4 py-3 border-2 border-slate-300 rounded-xl hover:border-green-400 transition">
             <Download className="w-5 h-5" />
             Export
           </button>
@@ -241,17 +318,25 @@ const IncidentList = () => {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm mb-4">
-                    <div>
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-slate-500" />
                       <span className="font-medium text-slate-600">Type:</span>
-                      <span className="text-slate-900 ml-2">{incident.type || 'N/A'}</span>
+                      <span className="text-slate-900">{incident.type || 'N/A'}</span>
                     </div>
-                    <div>
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-slate-500" />
                       <span className="font-medium text-slate-600">Location:</span>
-                      <span className="text-slate-900 ml-2">{incident.location || 'N/A'}</span>
+                      <span className="text-slate-900">{incident.location || 'N/A'}</span>
                     </div>
-                    <div>
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4 text-slate-500" />
                       <span className="font-medium text-slate-600">Reporter:</span>
-                      <span className="text-slate-900 ml-2">{incident.reporterName || 'Anonymous'}</span>
+                      <span className="text-slate-900">{incident.reporterName || 'Anonymous'}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-slate-500" />
+                      <span className="font-medium text-slate-600">Created:</span>
+                      <span className="text-slate-900">{incident.createdAt ? new Date(incident.createdAt).toLocaleDateString() : 'N/A'}</span>
                     </div>
                   </div>
 
@@ -298,6 +383,131 @@ const IncidentList = () => {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* New Incident Modal */}
+      {showNewIncidentModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 animate-in p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b-2 border-slate-200 p-6 flex items-center justify-between">
+              <h3 className="text-2xl font-bold text-slate-900">Create New Incident</h3>
+              <button onClick={() => setShowNewIncidentModal(false)} className="p-2 hover:bg-slate-100 rounded-lg transition">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateIncident} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-bold text-slate-900 mb-2">Title *</label>
+                <input
+                  type="text"
+                  value={newIncident.title}
+                  onChange={e => setNewIncident({...newIncident, title: e.target.value})}
+                  placeholder="Brief incident title"
+                  required
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-slate-900 mb-2">Description</label>
+                <textarea
+                  value={newIncident.description}
+                  onChange={e => setNewIncident({...newIncident, description: e.target.value})}
+                  placeholder="Detailed description..."
+                  rows="4"
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                ></textarea>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-slate-900 mb-2">Type</label>
+                  <select
+                    value={newIncident.type}
+                    onChange={e => setNewIncident({...newIncident, type: e.target.value})}
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="Theft">Theft</option>
+                    <option value="Violence">Violence</option>
+                    <option value="Intrusion">Intrusion</option>
+                    <option value="Fire">Fire</option>
+                    <option value="Medical">Medical</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-slate-900 mb-2">Severity</label>
+                  <select
+                    value={newIncident.severity}
+                    onChange={e => setNewIncident({...newIncident, severity: e.target.value})}
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="critical">Critical</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-slate-900 mb-2">Location *</label>
+                <input
+                  type="text"
+                  value={newIncident.location}
+                  onChange={e => setNewIncident({...newIncident, location: e.target.value})}
+                  placeholder="Building, room, area..."
+                  required
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-slate-900 mb-2">Latitude (Optional)</label>
+                  <input
+                    type="number"
+                    step="0.0001"
+                    value={newIncident.lat}
+                    onChange={e => setNewIncident({...newIncident, lat: e.target.value})}
+                    placeholder="34.0151"
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-slate-900 mb-2">Longitude (Optional)</label>
+                  <input
+                    type="number"
+                    step="0.0001"
+                    value={newIncident.lng}
+                    onChange={e => setNewIncident({...newIncident, lng: e.target.value})}
+                    placeholder="71.5249"
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowNewIncidentModal(false)}
+                  className="flex-1 px-6 py-3 border-2 border-slate-300 rounded-lg font-semibold hover:bg-slate-50 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-lg font-semibold hover:from-blue-700 hover:to-blue-600 transition disabled:opacity-50"
+                >
+                  {submitting ? 'Creating...' : 'Create Incident'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

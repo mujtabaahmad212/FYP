@@ -87,7 +87,7 @@ const Login = () => {
             <Shield className="w-10 h-10 text-white" />
           </div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
-            SecureWatch
+            SIMS
           </h1>
           <p className="text-slate-600 mt-2">Security Incident Management System</p>
         </div>

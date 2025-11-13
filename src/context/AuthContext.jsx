@@ -8,7 +8,8 @@ import {
   signInWithPopup,
   signInAnonymously,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
+import { useNavigate } from 'react-router-dom';
 
 const AuthContext = createContext();
 
@@ -17,6 +18,7 @@ export const useAuth = () => useContext(AuthContext);
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
 
   // Listen to auth state and pull user role from Firestore
   useEffect(() => {
@@ -24,8 +26,7 @@ export const AuthProvider = ({ children }) => {
       if (firebaseUser) {
         let role = null;
         let email = firebaseUser.email || '';
-        let displayName =
-          firebaseUser.displayName || email?.split('@')[0] || 'User';
+        let displayName = firebaseUser.displayName || email?.split('@')[0] || 'User';
 
         try {
           const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
@@ -59,6 +60,19 @@ export const AuthProvider = ({ children }) => {
 
     return () => unsubscribe();
   }, []);
+
+  // Listen to browser back/forward and force re-check
+  useEffect(() => {
+    const handlePopState = () => {
+      // Force re-evaluation of auth state on back/forward
+      if (!auth.currentUser) {
+        setUser(null);
+        navigate('/login', { replace: true });
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [navigate]);
 
   // Only admin/officer can login now
   const login = async (email, password) => {
@@ -123,6 +137,10 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     await signOut(auth);
     setUser(null);
+    // Clear any cached data
+    localStorage.clear();
+    sessionStorage.clear();
+    navigate('/login', { replace: true });
   };
 
   return (

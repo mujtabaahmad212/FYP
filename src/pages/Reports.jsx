@@ -1,41 +1,32 @@
 import React, { useState, useEffect } from 'react';
-import { Download, FileText, TrendingUp, Calendar, Filter, BarChart3, PieChart as PieChartIcon } from 'lucide-react';
+import { Download, FileText, TrendingUp, Calendar, Filter, BarChart3, PieChart as PieChartIcon, RefreshCw, AlertTriangle } from 'lucide-react';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { useIncidents } from '../context/IncidentsContext';
-import { analyticsAPI } from '../utils/api';
 
 const Reports = () => {
   const { incidents, fetchIncidents, loading } = useIncidents();
   const [analyticsData, setAnalyticsData] = useState({ bySeverity: [], byType: [], byLocation: [] });
-  const [timeRange, setTimeRange] = useState('7days');
-  const [exportFormat, setExportFormat] = useState('pdf');
+  const [timeRange, setTimeRange] = useState('all');
+  const [exportFormat, setExportFormat] = useState('csv');
+  const [customFilters, setCustomFilters] = useState({
+    type: 'all',
+    status: 'all',
+    location: 'all'
+  });
 
   useEffect(() => {
     fetchIncidents();
-    loadAnalytics();
   }, [fetchIncidents]);
 
-  const loadAnalytics = async () => {
-    try {
-      const dashboardData = await analyticsAPI.getDashboardStats();
-      setAnalyticsData({
-        bySeverity: dashboardData.bySeverity && dashboardData.bySeverity.length
-          ? dashboardData.bySeverity
-          : calculateBySeverity(incidents),
-        byType: dashboardData.byType && dashboardData.byType.length
-          ? dashboardData.byType
-          : calculateByType(incidents),
-        byLocation: await analyticsAPI.getHotspots().catch(() => calculateHotspots(incidents)) || calculateHotspots(incidents)
-      });
-    } catch (err) {
-      console.error('Analytics error:', err);
+  useEffect(() => {
+    if (incidents.length) {
       setAnalyticsData({
         bySeverity: calculateBySeverity(incidents),
         byType: calculateByType(incidents),
         byLocation: calculateHotspots(incidents)
       });
     }
-  };
+  }, [incidents]);
 
   const calculateBySeverity = (incidents) => [
     { name: 'Low', value: incidents.filter(i => i.severity === 'low').length, color: '#10b981' },
@@ -68,9 +59,80 @@ const Reports = () => {
       .slice(0, 10);
   };
 
-  useEffect(() => {
-    if (incidents.length) loadAnalytics();
-  }, [incidents.length]);
+  // Export to CSV
+  const exportToCSV = () => {
+    const headers = ['ID', 'Title', 'Type', 'Severity', 'Status', 'Location', 'Reporter', 'Created At', 'Description'];
+    const rows = incidents.map(inc => [
+      inc.id || '',
+      (inc.title || '').replace(/,/g, ';'),
+      inc.type || '',
+      inc.severity || '',
+      inc.status || '',
+      (inc.location || '').replace(/,/g, ';'),
+      inc.reporterName || 'Anonymous',
+      inc.createdAt ? new Date(inc.createdAt).toLocaleString() : '',
+      (inc.description || '').replace(/,/g, ';').replace(/\n/g, ' ')
+    ]);
+
+    const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
+    downloadFile(csvContent, 'incidents_report.csv', 'text/csv');
+  };
+
+  // Export to JSON
+  const exportToJSON = () => {
+    const jsonContent = JSON.stringify(incidents, null, 2);
+    downloadFile(jsonContent, 'incidents_report.json', 'application/json');
+  };
+
+  // Export custom filtered report
+  const exportCustomReport = () => {
+    let filtered = incidents;
+    if (customFilters.type !== 'all') {
+      filtered = filtered.filter(i => i.type === customFilters.type);
+    }
+    if (customFilters.status !== 'all') {
+      filtered = filtered.filter(i => i.status === customFilters.status);
+    }
+    if (customFilters.location !== 'all') {
+      filtered = filtered.filter(i => i.location === customFilters.location);
+    }
+
+    const headers = ['Title', 'Type', 'Severity', 'Status', 'Location', 'Created At'];
+    const rows = filtered.map(inc => [
+      inc.title || '',
+      inc.type || '',
+      inc.severity || '',
+      inc.status || '',
+      inc.location || '',
+      inc.createdAt ? new Date(inc.createdAt).toLocaleString() : ''
+    ]);
+
+    const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
+    downloadFile(csvContent, 'custom_incidents_report.csv', 'text/csv');
+  };
+
+  // Helper to download file
+  const downloadFile = (content, filename, type) => {
+    const blob = new Blob([content], { type });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExport = () => {
+    if (exportFormat === 'csv') {
+      exportToCSV();
+    } else if (exportFormat === 'json') {
+      exportToJSON();
+    } else {
+      alert('PDF export requires a PDF library. Use CSV or JSON for now.');
+    }
+  };
 
   if (loading && incidents.length === 0) {
     return (
@@ -83,8 +145,6 @@ const Reports = () => {
     );
   }
 
-  const COLORS = ['#10b981', '#f59e0b', '#ef4444', '#dc2626'];
-
   return (
     <div className="space-y-6 animate-in">
       {/* Header */}
@@ -96,10 +156,16 @@ const Reports = () => {
             Comprehensive incident analytics ({incidents.length} incidents)
           </p>
         </div>
-        <button className="btn-primary flex items-center gap-2">
-          <Download className="w-5 h-5" />
-          Export Report
-        </button>
+        <div className="flex gap-2">
+          <button onClick={fetchIncidents} className="btn-secondary flex items-center gap-2">
+            <RefreshCw className="w-5 h-5" />
+            Refresh
+          </button>
+          <button onClick={handleExport} className="btn-primary flex items-center gap-2">
+            <Download className="w-5 h-5" />
+            Export Report
+          </button>
+        </div>
       </div>
 
       {/* Time Range & Export Controls */}
@@ -129,10 +195,101 @@ const Reports = () => {
             onChange={(e) => setExportFormat(e.target.value)}
             className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
           >
-            <option value="pdf">PDF Report</option>
             <option value="csv">CSV Data</option>
-            <option value="xlsx">Excel</option>
+            <option value="json">JSON Data</option>
+            <option value="pdf">PDF Report (Coming Soon)</option>
           </select>
+        </div>
+      </div>
+
+      {/* Enhanced Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Total Incidents */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 p-6 shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-105 group">
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-2">
+              <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                <FileText className="w-6 h-6 text-white" />
+              </div>
+              <div className="text-right">
+                <p className="text-xs font-semibold text-blue-100 uppercase tracking-wider mb-1">Total Incidents</p>
+                <p className="text-4xl font-bold text-white">{incidents.length}</p>
+              </div>
+            </div>
+            <div className="mt-4 pt-4 border-t border-white/20">
+              <p className="text-sm text-blue-100 flex items-center gap-2">
+                <TrendingUp className="w-4 h-4" />
+                All time
+              </p>
+            </div>
+          </div>
+          <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-500"></div>
+        </div>
+
+        {/* Open Cases */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-orange-600 to-orange-700 p-6 shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-105 group">
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-2">
+              <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                <TrendingUp className="w-6 h-6 text-white" />
+              </div>
+              <div className="text-right">
+                <p className="text-xs font-semibold text-orange-100 uppercase tracking-wider mb-1">Open Cases</p>
+                <p className="text-4xl font-bold text-white">{incidents.filter(i => i.status === 'open').length}</p>
+              </div>
+            </div>
+            <div className="mt-4 pt-4 border-t border-white/20">
+              <p className="text-sm text-orange-100 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4" />
+                Needs attention
+              </p>
+            </div>
+          </div>
+          <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-500"></div>
+        </div>
+
+        {/* Critical Incidents */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-600 to-red-700 p-6 shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-105 group">
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-2">
+              <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                <AlertTriangle className="w-6 h-6 text-white" />
+              </div>
+              <div className="text-right">
+                <p className="text-xs font-semibold text-red-100 uppercase tracking-wider mb-1">Critical</p>
+                <p className="text-4xl font-bold text-white">{incidents.filter(i => i.severity === 'critical').length}</p>
+              </div>
+            </div>
+            <div className="mt-4 pt-4 border-t border-white/20">
+              <p className="text-sm text-red-100 flex items-center gap-2">
+                <BarChart3 className="w-4 h-4" />
+                High priority
+              </p>
+            </div>
+          </div>
+          <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-500"></div>
+        </div>
+
+        {/* Resolved Cases */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-green-600 to-green-700 p-6 shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-105 group">
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-2">
+              <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                <PieChartIcon className="w-6 h-6 text-white" />
+              </div>
+              <div className="text-right">
+                <p className="text-xs font-semibold text-green-100 uppercase tracking-wider mb-1">Resolved</p>
+                <p className="text-4xl font-bold text-white">{incidents.filter(i => i.status === 'resolved').length}</p>
+              </div>
+            </div>
+            <div className="mt-4 pt-4 border-t border-white/20">
+              <p className="text-sm text-green-100 flex items-center gap-2">
+                <Download className="w-4 h-4" />
+                Completed
+              </p>
+            </div>
+          </div>
+          <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-500"></div>
         </div>
       </div>
 
@@ -262,30 +419,42 @@ const Reports = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
           <div>
             <label className="block text-sm font-bold text-slate-900 mb-2">Incident Type</label>
-            <select className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-              <option>All Types</option>
-              <option>Theft</option>
-              <option>Violence</option>
-              <option>Intrusion</option>
-              <option>Fire</option>
-              <option>Medical</option>
+            <select
+              value={customFilters.type}
+              onChange={(e) => setCustomFilters({...customFilters, type: e.target.value})}
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">All Types</option>
+              <option value="Theft">Theft</option>
+              <option value="Violence">Violence</option>
+              <option value="Intrusion">Intrusion</option>
+              <option value="Fire">Fire</option>
+              <option value="Medical">Medical</option>
             </select>
           </div>
 
           <div>
             <label className="block text-sm font-bold text-slate-900 mb-2">Status</label>
-            <select className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-              <option>All Status</option>
-              <option>Open</option>
-              <option>Investigating</option>
-              <option>Resolved</option>
+            <select
+              value={customFilters.status}
+              onChange={(e) => setCustomFilters({...customFilters, status: e.target.value})}
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">All Status</option>
+              <option value="open">Open</option>
+              <option value="investigating">Investigating</option>
+              <option value="resolved">Resolved</option>
             </select>
           </div>
 
           <div>
             <label className="block text-sm font-bold text-slate-900 mb-2">Location</label>
-            <select className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-              <option>All Locations</option>
+            <select
+              value={customFilters.location}
+              onChange={(e) => setCustomFilters({...customFilters, location: e.target.value})}
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">All Locations</option>
               {analyticsData.byLocation.map((spot, idx) => (
                 <option key={idx} value={spot.location}>{spot.location}</option>
               ))}
@@ -293,9 +462,9 @@ const Reports = () => {
           </div>
         </div>
 
-        <button className="btn-primary flex items-center gap-2">
+        <button onClick={exportCustomReport} className="btn-primary flex items-center gap-2">
           <Download className="w-5 h-5" />
-          Generate & Export Report
+          Generate & Export Custom Report
         </button>
       </div>
     </div>

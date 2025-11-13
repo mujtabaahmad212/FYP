@@ -1,4 +1,4 @@
-# 🛡️ SecureWatch - Security Incident Management System
+# 🛡️ SIMS - Security Incident Management System
 
 A modern, real-time web application for security departments to log, track, and analyze security incidents.
 
@@ -16,11 +16,7 @@ A modern, real-time web application for security departments to log, track, and 
 
 ### Installation
 
-1. Clone the repository:
-```bash
-git clone https://github.com/yourusername/securewatch.git
-cd securewatch/frontend
-```
+
 
 2. Install dependencies:
 ```bash
@@ -97,7 +93,7 @@ frontend/
 
 ## 🔐 Demo Credentials
 
-- **Email:** admin@securewatch.com
+- **Email:** admin@SIMS.com
 - **Password:** any password
 - **Roles:** Administrator, Security Officer, Viewer
 

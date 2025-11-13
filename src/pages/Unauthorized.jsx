@@ -59,7 +59,7 @@ const Unauthorized = () => {
         <div className="text-center mt-8">
           <div className="flex items-center justify-center gap-2 text-slate-600 text-sm">
             <Shield className="w-4 h-4" />
-            Protected by SecureWatch
+            Protected by SIMS
           </div>
         </div>
       </div>

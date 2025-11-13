@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Shield, Loader } from 'lucide-react';
@@ -6,6 +6,14 @@ import { Shield, Loader } from 'lucide-react';
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   const { user, isAuthenticated, isLoading, userRole } = useAuth();
   const location = useLocation();
+
+  // Force re-check on component mount (for back/forward navigation)
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      // If not authenticated, replace history to prevent back navigation to protected page
+      window.history.replaceState(null, '', '/login');
+    }
+  }, [isAuthenticated, isLoading]);
 
   // Show loading spinner while checking auth state
   if (isLoading) {

@@ -49,7 +49,7 @@ const ViewerLanding = () => {
 
             {/* Heading */}
             <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold mb-6">
-              <span className="text-gradient">SecureWatch</span>
+              <span className="text-gradient">SIMS</span>
             </h1>
             <p className="text-xl sm:text-2xl text-slate-700 mb-4 max-w-3xl mx-auto font-medium">
               Advanced Security Incident Management System
@@ -132,7 +132,7 @@ const ViewerLanding = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-slate-600 text-sm">
-              © 2025 SecureWatch. All rights reserved.
+              © 2025 SIMS. All rights reserved.
             </p>
             <div className="flex items-center gap-6">
               <Link to="/login" className="text-sm text-slate-600 hover:text-blue-600 transition">Privacy Policy</Link>
