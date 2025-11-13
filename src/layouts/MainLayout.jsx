@@ -1,11 +1,9 @@
 import React from 'react';
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import { useAuth } from '../context/AuthContext';
+import FloatingCameraButton from '../components/FloatingCameraButton';
 
 const MainLayout = () => {
-  const { user } = useAuth();
-  const location = useLocation();
   const navigate = useNavigate();
 
   return (
@@ -16,6 +14,9 @@ const MainLayout = () => {
           <Outlet />
         </div>
       </main>
+
+      {/* Floating Camera Button - Always Visible */}
+      <FloatingCameraButton onClick={() => navigate('/report-incident')} />
 
       {/* Footer */}
       <footer className="border-t border-slate-200 bg-white/50 backdrop-blur-sm mt-12">

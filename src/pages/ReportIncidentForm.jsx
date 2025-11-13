@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIncidents } from '../context/IncidentsContext';
-import { AlertTriangle, MapPin, FileText, AlertCircle, Loader, CheckCircle, ArrowLeft } from 'lucide-react';
+import { AlertTriangle, MapPin, FileText, AlertCircle, Loader, CheckCircle, ArrowLeft, Camera, X } from 'lucide-react';
+import CameraCapture from '../components/CameraCapture';
 
 const ReportIncidentForm = () => {
   const { reportPublicIncident } = useIncidents();
@@ -11,6 +12,8 @@ const ReportIncidentForm = () => {
   const [success, setSuccess] = useState(false);
   const [trackingId, setTrackingId] = useState('');
   const [error, setError] = useState('');
+  const [showCamera, setShowCamera] = useState(false);
+  const [capturedPhotos, setCapturedPhotos] = useState([]);
 
   const [form, setForm] = useState({
     title: '',
@@ -38,14 +41,21 @@ const ReportIncidentForm = () => {
     setForm(prev => ({ ...prev, [name]: value }));
   };
 
-  // FIXED handleSubmit
+  const handlePhotoCapture = (imageDataUrl) => {
+    setCapturedPhotos(prev => [...prev, imageDataUrl]);
+    setShowCamera(false);
+  };
+
+  const removePhoto = (index) => {
+    setCapturedPhotos(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
     try {
-      // Validate required fields
       if (!form.title.trim()) {
         setError('Incident title is required');
         setLoading(false);
@@ -62,18 +72,17 @@ const ReportIncidentForm = () => {
         return;
       }
 
-      const res = await reportPublicIncident(form);
+      // Add photos to form data
+      const incidentData = {
+        ...form,
+        photos: capturedPhotos
+      };
 
-      // --- Robust trackingId extraction: --- //
-      // Firestore create incident may return an object with "id" (not "incident.id")
-      // and your API wrapper may return various shapes:
+      const res = await reportPublicIncident(incidentData);
+
       let trackingId = '';
       if (typeof res === 'object') {
-        trackingId = res?.trackingId
-                  || res?.incident?.id
-                  || res?.inc?.id
-                  || res?.id
-                  || '';
+        trackingId = res?.trackingId || res?.incident?.id || res?.inc?.id || res?.id || '';
       }
       if (!trackingId) {
         setError("Incident submitted, but no tracking ID returned.");
@@ -92,13 +101,12 @@ const ReportIncidentForm = () => {
 
   const progressSteps = [
     { number: 1, label: 'Incident Details', icon: AlertTriangle },
-    { number: 2, label: 'Location & Contact', icon: MapPin },
+    { number: 2, label: 'Location & Photos', icon: MapPin },
     { number: 3, label: 'Confirmation', icon: CheckCircle }
   ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 py-12 px-4 sm:px-6 lg:px-8">
-      {/* Back Button */}
       <div className="max-w-3xl mx-auto mb-8">
         <button
           onClick={() => navigate('/viewer')}
@@ -128,7 +136,6 @@ const ReportIncidentForm = () => {
               const isCurrent = step === s.number;
               return (
                 <div key={s.number} className="flex items-center flex-1">
-                  {/* Step Indicator */}
                   <div className={`relative flex items-center justify-center w-12 h-12 rounded-full font-bold transition-all duration-300 ${
                     isCurrent ? 'bg-gradient-to-br from-blue-600 to-blue-500 text-white shadow-lg scale-110' :
                     isActive ? 'bg-gradient-to-br from-green-500 to-green-600 text-white' :
@@ -136,8 +143,6 @@ const ReportIncidentForm = () => {
                   }`}>
                     {isActive && s.number !== step ? <CheckCircle className="w-6 h-6" /> : <StepIcon className="w-6 h-6" />}
                   </div>
-
-                  {/* Connector Line */}
                   {idx < progressSteps.length - 1 && (
                     <div className={`flex-1 h-1 mx-2 rounded-full transition-all duration-300 ${
                       isActive ? 'bg-green-500' : 'bg-slate-300'
@@ -147,8 +152,6 @@ const ReportIncidentForm = () => {
               );
             })}
           </div>
-
-          {/* Step Labels */}
           <div className="flex justify-between text-sm font-medium">
             {progressSteps.map(s => (
               <span key={s.number} className={`${step >= s.number ? 'text-blue-600' : 'text-slate-500'}`}>
@@ -160,7 +163,6 @@ const ReportIncidentForm = () => {
 
         {/* Form Card */}
         <div className="card animate-in">
-          {/* Error Alert */}
           {error && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 animate-in">
               <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
@@ -205,12 +207,7 @@ const ReportIncidentForm = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-slate-900 mb-3">Incident Type</label>
-                    <select
-                      name="type"
-                      value={form.type}
-                      onChange={handleChange}
-                      className="input-field"
-                    >
+                    <select name="type" value={form.type} onChange={handleChange} className="input-field">
                       {incidentTypes.map(type => (
                         <option key={type} value={type}>{type}</option>
                       ))}
@@ -235,19 +232,66 @@ const ReportIncidentForm = () => {
                       ))}
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setStep(2)}
-                    className="btn-primary w-full"
-                  >
-                    Continue to Location
+                  <button type="button" onClick={() => setStep(2)} className="btn-primary w-full">
+                    Continue to Location & Photos
                   </button>
                 </div>
               )}
 
-              {/* Step 2: Location & Contact */}
+              {/* Step 2: Location, Photos & Contact */}
               {step === 2 && (
                 <div className="space-y-6 animate-in">
+                  {/* Camera Section - HIGHLIGHTED AT TOP */}
+                  <div className="bg-gradient-to-br from-red-50 to-orange-50 border-2 border-red-200 rounded-2xl p-6 shadow-lg">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="p-3 bg-red-600 rounded-xl">
+                        <Camera className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-slate-900">Evidence Photos</h3>
+                        <p className="text-sm text-slate-600">Take live photos only (Gallery uploads not allowed)</p>
+                      </div>
+                    </div>
+
+                    {/* Captured Photos Preview */}
+                    {capturedPhotos.length > 0 && (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+                        {capturedPhotos.map((photo, idx) => (
+                          <div key={idx} className="relative group">
+                            <img
+                              src={photo}
+                              alt={`Evidence ${idx + 1}`}
+                              className="w-full h-32 object-cover rounded-lg border-2 border-white shadow-md"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removePhoto(idx)}
+                              className="absolute top-1 right-1 p-1.5 bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition shadow-lg"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                            <div className="absolute bottom-1 left-1 px-2 py-1 bg-black/70 text-white text-xs rounded-md">
+                              Photo {idx + 1}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Camera Button */}
+                    <button
+                      type="button"
+                      onClick={() => setShowCamera(true)}
+                      className="w-full py-4 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-3 group"
+                    >
+                      <Camera className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                      <span>Take Photo with Camera</span>
+                    </button>
+                    <p className="text-xs text-center text-slate-600 mt-2">
+                      📸 {capturedPhotos.length} photo(s) captured
+                    </p>
+                  </div>
+
                   <div>
                     <label className="block text-sm font-bold text-slate-900 mb-3">
                       <MapPin className="w-4 h-4 inline mr-2 text-green-600" />
@@ -328,11 +372,7 @@ const ReportIncidentForm = () => {
                     </div>
                   </div>
                   <div className="flex gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setStep(1)}
-                      className="btn-secondary flex-1"
-                    >
+                    <button type="button" onClick={() => setStep(1)} className="btn-secondary flex-1">
                       Back
                     </button>
                     <button
@@ -354,7 +394,6 @@ const ReportIncidentForm = () => {
               )}
             </form>
           ) : (
-            /* Success Step */
             <div className="text-center py-12 animate-in">
               <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-green-500 to-green-600 rounded-full shadow-lg mb-6 animate-bounce-subtle">
                 <CheckCircle className="w-12 h-12 text-white" />
@@ -367,16 +406,10 @@ const ReportIncidentForm = () => {
                 <p className="text-xs text-slate-600">Save this ID to track your report status</p>
               </div>
               <div className="flex gap-3 justify-center">
-                <button
-                  onClick={() => navigate('/track')}
-                  className="btn-primary"
-                >
+                <button onClick={() => navigate('/track')} className="btn-primary">
                   Track Your Report
                 </button>
-                <button
-                  onClick={() => navigate('/viewer')}
-                  className="btn-secondary"
-                >
+                <button onClick={() => navigate('/viewer')} className="btn-secondary">
                   Back Home
                 </button>
               </div>
@@ -384,6 +417,13 @@ const ReportIncidentForm = () => {
           )}
         </div>
       </div>
+
+      {/* Camera Modal */}
+      <CameraCapture
+        isOpen={showCamera}
+        onCapture={handlePhotoCapture}
+        onClose={() => setShowCamera(false)}
+      />
     </div>
   );
 };
